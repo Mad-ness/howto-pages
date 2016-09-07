@@ -1,4 +1,4 @@
-# Install a physical server
+# Install of a physical server
 
 
 ## Requirements
@@ -58,7 +58,7 @@ There are two common cases are going to be used:
 - run a new power cycle
 - once installing is started, uncheck the netboot option
 
-Last action helps to avoid reinstalling the server on next booting.
+Last action helps to avoid the reinstalling of a server on next booting.
 
 
 ### Reinstalling of existed server
