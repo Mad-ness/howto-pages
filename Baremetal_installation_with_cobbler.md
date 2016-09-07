@@ -54,7 +54,7 @@ There are two common cases are going to be used:
 
 ### Installation of a new server
 
-- configure a server as mentioned in the [Configuring PXE boot] section
+- configure a server as mentioned in the [Configuring PXE boot][] section
 - run a new power cycle
 - once installing is started, uncheck the netboot option
 
