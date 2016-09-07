@@ -1,4 +1,4 @@
-# Install of a physical server
+# Install of a physical server using Cobbler
 
 
 ## Requirements
@@ -54,7 +54,7 @@ There are two common cases are going to be used:
 
 ### Installation of a new server
 
-- configure a server as mentioned in the <Configuring PXE boot> section
+- configure a server as mentioned in the [Configuring PXE boot] section
 - run a new power cycle
 - once installing is started, uncheck the netboot option
 
@@ -71,6 +71,8 @@ Last action helps to avoid the reinstalling of a server on next booting.
 
 - Last volume in the disk layout is stretched out up to all free space of a volume group it hosts on.
   So there is a rootvg/dummy file system that can be destroyed at any time
+- IP addresses that allocated for servers are not hardcoded so to know an ip address of the installed server is need to check DHCP logs 
+  and find out IP address allocated to server's MAC address
 
 
 ## To be acknowleged
