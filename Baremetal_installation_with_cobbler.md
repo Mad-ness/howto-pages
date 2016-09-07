@@ -1,4 +1,3 @@
-# Install_physical_server.md
 # Install a physical server
 
 
