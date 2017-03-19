@@ -117,6 +117,7 @@ Full listing of (tftroot)/../etc/installerconfig file:
     
     # Enable SmartDataCenter support. Do not remove.
     smartdc_enable="YES"
+    ifconfig_vtnet0="DHCP"  # vtnet0 is the network card name
     zfs_enable="YES"
     sshd_enable="YES"
     ntpd_enable="YES"
