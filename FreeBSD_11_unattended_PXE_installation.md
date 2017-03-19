@@ -86,14 +86,14 @@ Full listing of (tftroot)/../etc/installerconfig file:
     
     #PARTITIONS=vtbd0       # uncomment this and comment in zfs related exports to switch on UFS file system
     export ZFSBOOT_DISKS=vtbd0
-    export ZFSBOOT_DATASETS="
-        /ROOT                mountpoint=none
-        /ROOT/default        mountpoint=/
-    
-        /tmp                 mountpoint=/tmp,exec=on,setuid=off
-        /usr                 mountpoint=/usr,canmount=off
-        /var                 mountpoint=/var,canmount=off
-    "
+    #export ZFSBOOT_DATASETS=" # default filesets will be applied, see the link below.
+    #    /ROOT                mountpoint=none
+    #    /ROOT/default        mountpoint=/
+    #
+    #    /tmp                 mountpoint=/tmp,exec=on,setuid=off
+    #    /usr                 mountpoint=/usr,canmount=off
+    #    /var                 mountpoint=/var,canmount=off
+    #"
     export nonInteractive="YES"
     DISTRIBUTIONS="kernel.txz base.txz"
     
@@ -117,7 +117,7 @@ Full listing of (tftroot)/../etc/installerconfig file:
     
     # Enable SmartDataCenter support. Do not remove.
     smartdc_enable="YES"
-    
+    zfs_enable="YES"
     sshd_enable="YES"
     ntpd_enable="YES"
     ntpd_sync_on_start="YES"
