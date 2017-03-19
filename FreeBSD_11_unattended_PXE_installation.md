@@ -170,3 +170,7 @@ So in order to make unattended installation of FreeBSD just place this file on t
 ## Profit
     
 That's all.
+
+## Issues
+
+There is a requirement is to be known the name of root device. So, it is possible to put some shell code for the disks detection in /etc/rc.local which will tell the right device name and same thing to be done for the interface name.
