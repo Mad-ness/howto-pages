@@ -79,8 +79,8 @@ If everything did right the virtual machine should start booting from PXE and ru
 
 ## Automated (unattended) installation
 
-The interesting file the investigation should be started is /etc/rc.local (/tftp/tftpboot/images/freebsd/fbsd11rel/etc/rc.local), it contains some checks and instructions. It checks whether the file /etc/installerconfig presented. If yes, it runs bsdinstall program and launch the installation procedure. Besides it this file contains instructions and settings for the bsdinstall program.
-At the beginning there are defined some variables used by bsdinstall and after #!/bin/sh line follows the script which will be executed after installation completes. The file was taken here https://github.com/joyent/mi-freebsd-10/blob/master/installerconfig and slightly modified.
+The interesting file the investigation should be started from is /etc/rc.local (/tftp/tftpboot/images/freebsd/fbsd11rel/etc/rc.local), it contains some checks and instructions. It checks whether the file /etc/installerconfig presented. If yes, it runs bsdinstall program and launch the installation procedure. Besides it this file contains instructions and settings for the bsdinstall program.
+At the beginning there are defined some variables used by bsdinstall and after #!/bin/sh line follows the script which will be executed after the install process completes. The file was taken here https://github.com/joyent/mi-freebsd-10/blob/master/installerconfig and slightly modified.
 
 Full listing of (tftroot)/../etc/installerconfig file:
     
