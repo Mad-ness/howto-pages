@@ -162,6 +162,8 @@ Full listing of (tftroot)/../etc/installerconfig file:
     # poweroff
     reboot
 
+Other bsdinstall variables and much more might be found here https://github.com/freebsd/freebsd/blob/master/usr.sbin/bsdinstall/scripts/zfsboot.
+
 So in order to make unattended installation of FreeBSD just place this file on the NFS directory where ISO content is copied and start VM booting from PXE.
 
 ## Profit
