@@ -174,3 +174,16 @@ That's all.
 ## Issues
 
 There is a requirement is to be known the name of root device. So, it is possible to put some shell code for the disks detection in /etc/rc.local which will tell the right device name and same thing to be done for the interface name.
+
+## Integrating FreeBSD installation into Syslinux boot menu
+
+If it is required to run FreeBSD installation via syslinux, then add the next menu item for that:
+
+    LABEL freebsd-11-release-amd64
+        MENU LABEL FreeBSD 11 RELEASE amd64
+        pxe images/freebsd/fbsd11rel/boot/pxeboot
+
+As we remember the root directory is /tftp/tftpboot and the pxe parameter points out at the FreeBSD loader. But some inconvinience is still kept - the option root-path should be passed over DHCP so far.
+Note: I couldn't get correctly working configuration in that case, the FreeBSD kernel stopped booting. Hope this is because of the virtual machine wasn't working best way.
+
+
