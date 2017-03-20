@@ -26,7 +26,7 @@ We need to pass to each FreeBSD client option root-path. It also could be global
         option root-path "192.168.168.105:/tftp/tftpboot/images/freebsd/fbsd11rel/";
     }
 
-Put in the hardware ethernet parameter the MAC address of the virtual machine is used for tests.
+Put in the hardware ethernet parameter the MAC address of the virtual machine is used for tests. This configuration allows to run FreeBSD without having Syslinux. If you do not want to customize dhcpd.conf for FreeBSD systems or to prefer to have a boot menu which Syslinux provides, the installation could be run via Syslinux. See the section "Integrating FreeBSD installation into Syslinux boot menu" for the details.
 
 In my case I had some problems with duplicating ip addresses so the FreeBSD loader could not recognize a single boot as complete session and it did a lot of DHCP queries, next global option has fixed the trouble:
 
@@ -62,7 +62,7 @@ There is no special configuration made for syslinux because syslinux is not used
              images/
                  freebsd/
                     fbsd11rel/
-                        ... files unpacked out of ISO ...
+                        ... files extracted out of ISO ...
 
 ### Setup files and NFS service
 
@@ -171,9 +171,11 @@ So in order to make unattended installation of FreeBSD just place this file on t
     
 That's all.
 
+
 ## Issues
 
 There is a requirement is to be known the name of root device. So, it is possible to put some shell code for the disks detection in /etc/rc.local which will tell the right device name and same thing to be done for the interface name.
+
 
 ## Integrating FreeBSD installation into Syslinux boot menu
 
@@ -181,9 +183,9 @@ If it is required to run FreeBSD installation via syslinux, then add the next me
 
     LABEL freebsd-11-release-amd64
         MENU LABEL FreeBSD 11 RELEASE amd64
-        pxe images/freebsd/fbsd11rel/boot/pxeboot
+        kernel pxechn.c32
+        append images/freebsd/fbsd11rel/boot/pxeboot -o 17.s=192.168.168.105:/tftp/tftpboot/images/freebsd/fbsd11rel
 
-As we remember the root directory is /tftp/tftpboot and the pxe parameter points out at the FreeBSD loader. But some inconvinience is still kept - the option root-path should be passed over DHCP so far.
-Note: I couldn't get correctly working configuration in that case, the FreeBSD kernel stopped booting. Hope this is because of the virtual machine wasn't working best way.
+The file pxechn.c32 is supplied within Syslinux package and to be placed into tftp root directory, this is /tftp/tftpboot.
 
-
+See the page http://www.syslinux.org/wiki/index.php?title=Pxechn.c32 for detail how to use pxechn.c32 module. It accepts -o argument where possible to specify the DHCP options just following it a dhcp code and its required value. In our case we use code 17 (root-path option), "s" means a string and providing there the desired path. The keyword "append" says to pass to the pxechn.c32 the all mentioned there arguments.
