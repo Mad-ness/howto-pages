@@ -74,7 +74,7 @@ There is no special configuration made for syslinux because syslinux is not used
 
 Now just configure the virtual machine to boot from PXE. It should request IP address from DHCP service and receive parameters for loading such as pxeboot loader and root-path which to be shared by NFS protocol.
 
-If everything did right the virtual machine should start booting from PXE and run bsdinstall program and it is possible to install FreeBSD manually. That's no our way. Go ahead.
+If everything did right the virtual machine should start booting from PXE and run bsdinstall program and it is possible to install FreeBSD manually. That's not our way, we need the automation. Go ahead.
 
 
 ## Automated (unattended) installation
