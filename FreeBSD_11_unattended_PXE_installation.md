@@ -1,5 +1,5 @@
 # Unattended PXE Installation of FreeBSD 11
-The guide describes what and how to configure in order to get the FreeBSD 11 OS installed over PXE.
+The guide describes what and how to configure in order to get the FreeBSD 11 OS installed over PXE. This should also work on FreeBSD 10 and 9.
 
 
 ## Prerequisites
