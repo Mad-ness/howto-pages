@@ -116,27 +116,17 @@ And copy initial values from base system:
 
     cp -r /var/db/ports/* /usr/local/etc/poudriere.d/freeipa_11-0x64-options
 
-Actually last step is not necessary since initial values will be filled when lanch next command:
-
-    poudriere options -j freeipa_11-0x64 -p RELEASE -f /usr/local/etc/poudriere.d/port-list    
-
-configure the packages with the options as below:
-
-    bind99: DLZ_LDAP, GSSAPI_MIT
-    opeldap-sasl-client: FETCH, GSSAPI
-    krb5: DNS_FOR_REALM, LDAP
-    sssd: SMB
-    sudo: SSSD
-
-for other packages either leave the option values as is or set them respectively as above.
+Actually last step is not necessary since initial values will be configured later.
 
 
 ### Making ports sudo-sssd and sssd-smb4
 
 Besides standard packages we need to separate the sudo port and a port which is built with sssd support and same thing for sssd package built with SMB support. SMB option is required to add IPA support in sssd. These packages will call sudo-sssd and sssd-smb4, such names are given to avoid conflicts with standard packages assembled without required options. But there is an disadvantage of such approarch - the new ports should be supported by you. 
 
+In the two below subsections are created two additional ports but not needed to create separate ports for other modified packages because they are not installed directly but installed as depedencies. So in further you will have a choice to install standard packages from regular FreeBSD repository or with supporting special options from our repository.
 
-## Make sudo-sssd port
+
+#### Make sudo-sssd port
 
 Duplicate sudo port package to sudo-sssd:
 
@@ -153,7 +143,7 @@ and edit sudo-sssd, vi sudo-sssd/Makefile:
 Option PKGNAMESUFFIX does not exist initially so add this after PORTNAME or next to it. Here we change port name to sudo-sssd and change a dependence security/sssd to security-sssd-smb4. OPTIONS\_DEFAULT we also set within required values although it could be done previously while executing 'poudriere options' command.
 
 
-## Make sssd-smb4 port
+#### Make sssd-smb4 port
 
 As previously, duplicate sssd port sssd-smb4:
 
@@ -163,7 +153,34 @@ As previously, duplicate sssd port sssd-smb4:
 
 Here we also make a new package name sssd-smb4 so it will not conflict with original port and add an option as default SMB.
 
-In both cases sudo-sssd and sssd-smb4 you must youself sync new packages with its masters when the ports tree is updated.
+In both cases sudo-sssd and sssd-smb4 you must youself sync new packages with its masters when the ports tree is refreshed.
+
+
+### Configure packages options
+
+Run this command, it configure packages like make config in a ports tree.
+
+    poudriere options -j freeipa_11-0x64 -p RELEASE -f /usr/local/etc/poudriere.d/port-list
+
+
+### Building the ports
+
+It is always good keep the jail up-to-dated so run this to do it:
+
+    poudriere jail -u -j freebsd_11-0x64
+
+If you need to update the ports tree first, it could be done so way:
+
+    poudriere ports -u -p RELEASE 
+
+And run this command to start building the packages for our custom repository:
+
+    poudriere bulk -j freebsd_11-0x64 -p RELEASE -f /usr/local/etc/poudriere.d/port-list
+
+the command downloads, compiles source files and packs them into binary packages like FreeBSD maintainers do. Pressing Ctlr+T gives details about current status.
+
+
+
 
 
 
