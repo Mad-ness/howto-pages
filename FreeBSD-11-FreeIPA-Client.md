@@ -47,6 +47,7 @@ Create an SSL certificate and key
     openssl rsa -in /usr/local/etc/ssl/keys/poudriere.key -pubout -out /usr/local/etc/ssl/certs/poudriere.cert
 
 Next, open the configuration file and edit it as below, vi /usr/local/etc/poudriere.conf:
+
     NO_ZFS=no                           # if you use ZFS
     ZPOOL=zroot                         # name of your zfs pool where jails will be placed
     ZROOTFS=/poudriere                  # there will be stored some data
