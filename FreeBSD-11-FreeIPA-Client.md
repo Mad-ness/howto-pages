@@ -8,9 +8,36 @@ Some instructions were taken from here https://abbra.fedorapeople.org/.paste/fre
 ## Common plan of actions
 
 - Compilation some packages with building a binary repository
-- Installation packages
+- Connecting a new repository with binary packages
+- Installing FreeIPA-client packages
 - Adjusting configuration files
 - Testing
+
+
+## Prerequisites
+
+Physical or virtual servers:
+
+- Make sure that a FreeIPA server is already installed and working properly, this guide is not about this.
+- One FreeBSD build machine and one more FreeBSD machine which is intended to be a FreeIPA client, actually this might a single machine.
+
+
+Used software versions:
+
+- FreeIPA server 4.4.3 running on Fedora 25
+- A FreeBSD build machine and a FreeBSD FreeIPA client 11.0-RELEASE-p8
+- FreeBSD packages: sudo-1.8.19p2, sssd-1.11.7\_8, krb5-1.15.1\_4, openldap-sasl-client-2.4.44, samba-4.4.12
+
+I think this guide will also be suitable for FreeBSD 10 and maybe FreeBSD 9.
+
+
+FreeIPA details:
+
+- FreeIPA server: fedora25-freeipa.airlan.local
+- FreeIPA client: freebsd-pkgtest2.airlan.local
+- domain: airlan.local
+- realm: AIRLAN.LOCAL
+- FreeIPA server configured with no DNS support so DNS server is in other place in airlan.local domain as well as DHCP.
 
 
 ## Building required packages
@@ -151,9 +178,9 @@ As previously, duplicate sssd port sssd-smb4:
     OPTIONS_DEFAULT=    SMB
     COMMENT=	System Security Services Daemon with SMB enabled option
 
-Here we also make a new package name sssd-smb4 so it will not conflict with original port and add an option as default SMB.
+Here we also make a new package called sssd-smb4 so it will not conflict with its original port. We need to have samba package enabled because it gives ipa module for sssd, however samba will not be configured at all.
 
-In both cases sudo-sssd and sssd-smb4 you must youself sync new packages with its masters when the ports tree is refreshed.
+In both cases sudo-sssd and sssd-smb4 you must on youself synchronize the new packages with its masters when the ports tree is refreshed.
 
 
 ### Configure packages options
@@ -180,7 +207,271 @@ And run this command to start building the packages for our custom repository:
 the command downloads, compiles source files and packs them into binary packages like FreeBSD maintainers do. Pressing Ctlr+T gives details about current status.
 
 
+### Setting up Nginx
+
+We need Nginx to provide access to our custom repository and as a plus Poudriere has a web interface for watching the current buildings.
 
 
+Enable Nginx:
+    
+    echo 'nginx_enable="YES"' >> /etc/rc.conf
 
+
+Edit Nginx's configuration file like so:
+
+    vi /usr/local/etc/nginx/nginx.conf
+    ...
+    server {
+        listen 80 default;
+        server_name BuildServer_Hostname_or_IP;
+        root /usr/local/share/poudriere/html;
+
+        location /data {
+            alias /usr/local/poudriere/data/logs/bulk;
+            autoindex on;
+        }
+        location /packages {
+            root /usr/local/poudriere/data;
+            autoindex on;
+        }
+    }
+    ...
+
+And edit this file, vi /usr/local/etc/nginx/mime.types:
+
+    text/mathml                         mml;
+    text/plain                          txt log;  # Update this line
+    text/vnd.sun.j2me.app-descriptor    jad;
+
+And start it:
+
+    service nginx configtest && service nginx start
+
+
+So check how it is working: open in a webrowser:
+
+- http://BuildServer\_Hostname\_or\_IP/data - web interface to Poudriere
+- http://BuildServer\_Hostname\_or\_IP/packages - this points the built packages
+
+
+## Connecting a new repository with binary packages
+
+Since now go to the FreeBSD FreeIPA-client server and configure it to start using the custom repository
+
+
+### Adding a repository to be it known the system
+
+    mkdir -p /usr/local/etc/pkg/repos
+    vi /usr/local/etc/pkg/repos/poudriere.conf
+
+    poudriere: {
+        url: "pkg+http://BuildServer\_Hostname\_or\_IP/packages/freeipa_11-0x64-RELEASE",
+        mirror_type: "srv",
+        signature_type: "pubkey",
+        pubkey: "/usr/local/etc/ssl/certs/poudriere.cert",
+        enabled: yes,
+        priority: 100
+    }
+
+We give it priority 100. Having two or more repositories, the selected packages will be installed from a repository with highest priority. In our case such packages are samba4, krb5, bind99 and other.
+
+But if it is needed you can disable FreeBSD repository:
+
+    vi /usr/local/etc/pkg/repos/freebsd.conf
+    FreeBSD: {
+        enabled: no
+    }   
+
+Now inform the system to recognize the new connected repository:
+
+    pkg update
+
+
+## Installing FreeIPA-client packages
+
+If all above have done well, now we can start working with FreeIPA related things.
+
+
+### Install packages
+
+    pkg install sssd-smb4 sudo-smb4 cyrus-sasl2-client
+
+
+### Configure OpenLDAP client
+
+    vi /usr/local/etc/openldap/ldap.conf
+    BASE		    dc=airlan,dc=local
+    URI		        ldap://fedora25-freeipa.airlan.local
+    SSL		        start_tls
+    SASL_NOCANON 	on
+    TLS_CACERT 	    /usr/local/etc/sssd/ip.cacert
+    TLS_CACERTDIR	/usr/local/etc/sssd
+
+Certificate /usr/local/etc/sssd/ip.cacert should be copied from IPA server, usually it installed as /root/cacert.p12.
+
+Run openldap -x, to check the correctness of settings.
+
+
+### Configure Kerberos client:
+
+    vi /etc/krb5.conf
+    [libdefaults]
+     default_realm = AIRLAN.LOCAL
+    
+    [realms]
+     AIRLAN.LOCAL = {
+      kdc = fedora25-freeipa.airlan.local
+      admin_server = fedora25-freeipa.airlan.local
+     }
+    
+    [domain_realm]
+     .airlan.local = AIRLAN.LOCAL
+     airlan.local = AIRLAN.LOCAL
+
+Run "kinit admin" and provide admin's password. If a ticket is received then it's fine.
+
+
+### Configure SSSd
+
+    vi /usr/local/etc/sssd/sssd.conf 
+    [domain/airlan.local]
+     cache_credential = True
+     krb5_store_password_if_offline = True
+     ipa_domain = airlan.local
+     id_provider = ipa
+     auth_provider = ipa
+     access_provider = ipa
+     ipa_hostname = freebsd-pkgtest2.airlan.local
+     chpass_provider = ipa
+     ipa_server = _srv_, fedora25-freeipa.airlan.local
+     ldap_tls_cacert = /usr/local/etc/sssd/ip.cacert
+     entry_cache_timeout = 5
+     enumerate = True
+    
+    [sssd]
+     config_file_version = 2
+     services = nss, pam, sudo
+     domains = airlan.local
+    
+    [nss]
+     override_homedir = /usr/home/%u   # by default there is not /home directory on FreeBSD     
+     override_shell = /bin/csh
+    
+    [pam]
+    
+    [sudo]
+
+and make it secure and enable:
+
+    chmod 0600 /usr/local/etc/sssd/sssd.conf
+    echo 'sssd_enable="YES"' >> /etc/rc.conf
+
+
+More details see man sssd-ipa.
+
+
+### Configure /etc/nsiswitch.conf and pam files
+
+Set options as specified
+
+    group: files sss
+    passwd: files sss
+    sudoers: sss files
+
+
+File /etc/pam.d/system. Pay attention that only /usr/local/lib/pam\_sss.so, pam\_krb5.so and pam\_mkhomedir.so were added.
+
+    #
+    # $FreeBSD: releng/11.0/etc/pam.d/system 197769 2009-10-05 09:28:54Z des $
+    #
+    # System-wide defaults
+    #
+    
+    # auth
+    auth		sufficient	pam_opie.so		no_warn no_fake_prompts
+    auth		requisite	pam_opieaccess.so	no_warn allow_local
+    auth		sufficient	pam_krb5.so 		no_warn try_first_pass
+    #auth		sufficient	pam_ssh.so		no_warn try_first_pass
+    auth		sufficient	/usr/local/lib/pam_sss.so debug use_first_pass
+    auth		required	pam_unix.so		no_warn try_first_pass nullok
+    
+    # account
+    #account	required	pam_krb5.so
+    account		required	pam_login_access.so
+    account		required	pam_unix.so
+    account 	required 	/usr/local/lib/pam_sss.so ignore_unknown_user ignore_authinfo_unavail
+    
+    # session
+    #session	optional	pam_ssh.so		want_agent
+    session		required	pam_lastlog.so		no_fail
+    session		required	/usr/local/lib/pam_mkhomedir.so
+    
+    # password
+    #password	sufficient	pam_krb5.so		no_warn try_first_pass
+    password	sufficient	/usr/local/lib/pam_sss.so use_authtok
+    password	required	pam_unix.so		no_warn try_first_pass
+    
+
+and similar updates in /etc/pam.d/sshd file
+
+    #
+    # $FreeBSD: releng/11.0/etc/pam.d/sshd 197769 2009-10-05 09:28:54Z des $
+    #
+    # PAM configuration for the "sshd" service
+    #
+    
+    # auth
+    auth		sufficient	pam_opie.so		no_warn no_fake_prompts
+    auth		requisite	pam_opieaccess.so	no_warn allow_local
+    auth		sufficient	pam_krb5.so		no_warn	try_first_pass
+    #auth		sufficient	pam_ssh.so		no_warn try_first_pass
+    auth		sufficient	/usr/local/lib/pam_sss.so use_first_pass
+    auth		required	pam_unix.so		no_warn try_first_pass
+    
+    # account
+    account		required	pam_nologin.so
+    #account	required	pam_krb5.so
+    account		required	pam_login_access.so
+    account		required	pam_unix.so
+    account		required	/usr/local/lib/pam_sss.so ignore_unknown_user ignore_authinfo_unavail
+    
+    # session
+    #session	optional	pam_ssh.so		want_agent
+    session		required	pam_permit.so
+    session		required	/usr/local/lib/pam_mkhomedir.so
+    
+    # password
+    #password	sufficient	pam_krb5.so		no_warn try_first_pass
+    password	sufficient	/usr/local/lib/pam_sss.so use_authtok
+    password	required	pam_unix.so		no_warn try_first_pass
+
+
+### Configure SSH service
+
+Uncomment and enable "GSSAPIAuthentication yes" option and restart sshd service.
+
+
+### Configure FreeIPA
+
+Now switch to FreeIPA server and add the client host:
+
+    kinit admin 
+
+and provide admin's password on a prompt
+
+    ipa host-add freebsd-pkgtest2.airlan.local
+
+copy file /etc/krb5.keytab to freebsd-pkgtest2.airlan.local:/etc/krb5.keytab and check:
+
+    ldapsearch -Y GSSAPI
+
+output should be printed.
+
+Now you can start sssd service, create some accounts in FreeIPA and try to login to FreeBSD client.
+
+
+## Important notes
+
+- Just created users who must reset their passwords at first login are not prompted to do it on FreeBSD clients
+- Sudo rules weren't tested intensively
 
