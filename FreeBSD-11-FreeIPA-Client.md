@@ -312,6 +312,29 @@ Certificate /usr/local/etc/sssd/ip.cacert should be copied from IPA server, usua
 Run openldap -x, to check the correctness of settings.
 
 
+### Configure DNS
+
+If you did not select "configure DNS" as I did then add following DNS records in airlan.local zone:
+
+    $ORIGIN airlan.local.
+    fedora25-freeipa	A	192.168.168.211
+    _kerberos		    TXT	"AIRLAN.LOCAL"
+    $ORIGIN _tcp.airlan.local.
+    _kerberos		    SRV	0 100 88 fedora25-freeipa.airlan.local.
+    _kerberos-adm		SRV	0 100 88 fedora25-freeipa.airlan.local.
+    _kerberos-master	SRV	0 100 88 fedora25-freeipa.airlan.local.
+    _kpasswd		    SRV	0 100 464 fedora25-freeipa.airlan.local.
+    _ldap			    SRV	0 100 389 fedora25-freeipa.airlan.local.
+    $ORIGIN _udp.airlan.local.
+    _kerberos		    SRV	0 100 88 fedora25-freeipa.airlan.local.
+    _kerberos-adm		SRV	0 100 88 fedora25-freeipa.airlan.local.
+    _kerberos-master	SRV	0 100 88 fedora25-freeipa.airlan.local.
+    _kpasswd		    SRV	0 100 464 fedora25-freeipa.airlan.local.
+    _ntp			    SRV	0 100 123 fedora25-freeipa.airlan.local.
+
+Actually you should be informed about this after completing deploying FreeIPA server.
+
+
 ### Configure Kerberos client
 
     vi /etc/krb5.conf
