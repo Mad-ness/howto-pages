@@ -497,4 +497,5 @@ Now you can start sssd service, create some accounts in FreeIPA and try to login
 
 - Just created users who must reset their passwords at first login are not prompted to do it on FreeBSD clients
 - Sudo rules weren't tested intensively
+- Other a lot of things weren't alsot tested
 
