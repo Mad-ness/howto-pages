@@ -312,7 +312,7 @@ Certificate /usr/local/etc/sssd/ip.cacert should be copied from IPA server, usua
 Run openldap -x, to check the correctness of settings.
 
 
-### Configure Kerberos client:
+### Configure Kerberos client
 
     vi /etc/krb5.conf
     [libdefaults]
