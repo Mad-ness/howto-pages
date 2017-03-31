@@ -294,7 +294,7 @@ If all above have done well, now we can start working with FreeIPA related thing
 
 ### Install packages
 
-    pkg install sssd-smb4 sudo-sssd cyrus-sasl2-client
+    pkg install sssd-smb4 sudo-sssd cyrus-sasl-gssapi
 
 
 ### Configure OpenLDAP client
