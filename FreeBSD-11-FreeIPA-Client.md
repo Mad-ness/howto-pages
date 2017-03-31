@@ -373,7 +373,7 @@ Run "kinit admin" and provide admin's password. If a ticket is received then it'
     
     [sssd]
      config_file_version = 2
-     services = nss, pam, sudo
+     services = nss, pam, sudo, ssh
      domains = airlan.local
     
     [nss]
@@ -471,7 +471,11 @@ and similar updates in /etc/pam.d/sshd file
 
 ### Configure SSH service
 
-Uncomment and enable "GSSAPIAuthentication yes" option and restart sshd service.
+Make sure below options are uncommented: 
+
+    AuthorizedKeysCommand /usr/local/bin/sss_ssh_authorizedkeys
+    AuthorizedKeysCommandUser nobody
+    PubkeyAuthentication yes
 
 
 ### Configure FreeIPA
