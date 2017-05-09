@@ -84,6 +84,7 @@ Next, open the configuration file and edit it as below, vi /usr/local/etc/poudri
     CHECK_CHANGED_DEPS=yes              
     PKG_REPO_SIGNING_KEY=/usr/local/etc/ssl/keys/poudriere.key
     URL_BASE=http://<your-repo-hostname> # it points out at the build host
+    BASEFS=/poudriere
 
 Save and close the file.
 
@@ -96,7 +97,7 @@ Now we will construct a jail, there packages will be built in. It keeps the base
 
 To check it:
     
-     jail -l
+     poudriere jail -l
 
 The output will look like this:
 
