@@ -21,7 +21,7 @@ oauthConfig:
   ...
   identityProviders:
 ### Provider specific configuration
-  - name: li9freeipa
+  - name: freeipa
     challenge: true
     mappingMethod: claim
     login: true
