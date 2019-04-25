@@ -48,7 +48,7 @@ Certificate `freeipa-ca.crt` is taken from __FreeIPA__ server.
 By default any valid (enabled) account can log in to Openshift. In order to map FreeIPA groups and their members to OpenShift,
 some actions need to be taken.
 
-Create file `sync-ldap.yaml`
+* Create file `sync-ldap.yaml`
 ```yaml
 $ cat sync-ldap.yaml
 kind: LDAPSyncConfig
@@ -81,13 +81,12 @@ rfc2307:
   tolerateMemberNotFoundErrors: false
   tolerrateMemberOutOfScopeErrors: false
 ```
-* the filter limits synchronization only specific groups __openshift_admins__ and __openshift_users__
+*the filter limits synchronization only specific groups __openshift_admins__ and __openshift_users__*
 
-Use this command to run synchronization:
+* Use this command to run synchronization:
 ```
 $ oc adm groups sync --sync-config=sync-ldap.yaml --confirm
 ```
-
 This commands creates the groups and adds to these groups its members.
 
 Use the synchronization for any changes in the groups to reflect them on to Openshift.
