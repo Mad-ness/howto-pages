@@ -81,7 +81,8 @@ rfc2307:
   tolerateMemberNotFoundErrors: false
   tolerrateMemberOutOfScopeErrors: false
 ```
-*the filter limits synchronization only specific groups __openshift_admins__ and __openshift_users__*
+  * *the filter limits synchronization only specific groups __openshift_admins__ and __openshift_users__*
+  * *CA certification freeipa-ca.crt should be taken from FreeIPA server*
 
 * Use this command to run synchronization:
 ```
