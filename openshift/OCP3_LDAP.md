@@ -88,11 +88,11 @@ rfc2307:
 ```
 $ oc adm groups sync --sync-config=sync-ldap.yaml --confirm
 ```
-This commands creates the groups and adds to these groups its members.
+This commands creates the groups and adds to these groups its members in OpenShift.
 
-Use the synchronization for any changes in the groups to reflect them on to Openshift.
+__Use the synchronization for any changes in the groups to reflect them on Openshift.__
 
-* Verification
+## Verification
 
 Make sure that the needed groups and users are there (providing that _admin_ is a member of group *openshift_admins* and users *ocp_testuser1* and *ocp_testuser2* are the members of group _openshit_users_ in FreeIPA).
 ```
