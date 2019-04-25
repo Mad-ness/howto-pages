@@ -2,7 +2,7 @@
 
 Integration Openshift Container Platform 3.x with FreeIPA.
 
-This integration allows FreeIPA users authentication in Openshift platform.
+This integration allows FreeIPA users to authenticate in Openshift platform.
 
 ## Prerequisites
 
