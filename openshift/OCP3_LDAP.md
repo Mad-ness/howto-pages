@@ -170,7 +170,8 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: sync-ldap-users
-
+userNames:
+- system:serviceaccount:sync-ldap-users:sync-ldap-users
 
 ---
 apiVersion: v1
