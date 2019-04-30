@@ -49,18 +49,18 @@ Certificate `freeipa-ca.crt` is taken from __FreeIPA__ server.
 If you are doing a new installation, the integration could be set in inventory, like this:
 
 ```yaml
-                openshift_master_identity_providers:
-                  - name: freeipa
-                    challenge: true
-                    login: true
-                    mappingMethod: claim
-                    kind: LDAPPasswordIdentityProvider
-                    attributes: { id: [ "dn" ], email: [ "mail" ], name: [ "cn" ], preferredUsername: [ "uid" ]}
-                    bindDN: "uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com"
-                    bindPassword: "VerySecureObfuscatedPasswordQwerty"
-                    ca: freeipa-ca.crt
-                    insecure: false
-                    url: "ldaps://idm.example.com/cn=users,cn=accounts,dc=idm,dc=example,dc=com?uid"
+openshift_master_identity_providers:
+  - name: freeipa
+    challenge: true
+    login: true
+    mappingMethod: claim
+    kind: LDAPPasswordIdentityProvider
+    attributes: { id: [ "dn" ], email: [ "mail" ], name: [ "cn" ], preferredUsername: [ "uid" ]}
+    bindDN: "uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com"
+    bindPassword: "VerySecureObfuscatedPasswordQwerty"
+    ca: freeipa-ca.crt
+    insecure: false
+    url: "ldaps://idm.example.com/cn=users,cn=accounts,dc=idm,dc=example,dc=com?uid"
 ```                    
 
 ## LDAP Groups
