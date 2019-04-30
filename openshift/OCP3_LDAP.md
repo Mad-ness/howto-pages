@@ -312,6 +312,8 @@ NAME              SCHEDULE      SUSPEND   ACTIVE    LAST SCHEDULE   AGE
 sync-ldap-users   */5 * * * *   False     0         <none>          1m
 sync-ldap-users   */5 * * * *   False     1         9s        4m
 sync-ldap-users   */5 * * * *   False     0         19s       4m
+sync-ldap-users   */5 * * * *   False     1         9s        9m
+sync-ldap-users   */5 * * * *   False     0         19s       9m
 ```
 
 In the meantime time add and delete users in FreeIPA to groups `openshift_users` and `openshift_admins` and watch the updates `oc get groups -w`.
