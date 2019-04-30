@@ -37,7 +37,7 @@ oauthConfig:
       insecure: false
       ca: /etc/origin/master/freeipa-ca.crt
       bindDN: 'uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com'
-      bindPassword: '***********'
+      bindPassword: 'VerySecureObfuscatedPasswordQwerty'
       url: 'ldaps://idm.example.com/cn=users,cn=accounts,dc=idm,dc=example,dc=com?uid'
 ### end
 ...
