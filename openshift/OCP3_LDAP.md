@@ -123,7 +123,7 @@ Executing the synchronization is done by this command `oc adm groups sync`. I do
 ### Prerequisites
 
 - for OpenShift v3.11 we need an access to the image `docker.io/ebits/openshift-client:v3.11.0`
-- create a project for this operation `oc new-project openshift-services` (`oc create ns openshift-service` should work) and everything in this project `oc project openshift-services`
+- create a project for this operation `oc new-project openshift-services` (`oc create ns openshift-service` should work)
 
 ### Creating Needed objects
 
