@@ -11,7 +11,7 @@ This integration allows FreeIPA users to authenticate in Openshift platform.
   * domain name `example.com`
   * server address `ldaps://idm.example.com`
   * SSL enabled
-* An account with the cluster-admin permissions
+* An account with the `cluster-admin` permissions
 
 
 ## Updating /etc/origin/master/master-config.yaml
