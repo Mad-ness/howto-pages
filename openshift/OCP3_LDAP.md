@@ -113,5 +113,58 @@ $ oc adm policy add-cluster-role-to-group cluster-admin openshift_admins
 $ oc adm policy add-cluster-role-to-group basic-user openshift_users
 ```
 
+If you will run  `oc adm groups sync` manually or use any external tools, you may not read further.
+
+
+## Making synchronization is done by OpenShift itself
+
+Executing the synchronization is done by this command `oc adm groups sync`. I don't know whether it possible to call the same action with API (sure yes). But I found another way how to do it. I will use `CronJob` object and an image with OpenShift client tool. It will call `oc adm groups sync` by cron.
+
+### Prerequisites
+
+- for OpenShift v3.11 we need an access to the image `docker.io/ebits/openshift-client:v3.11.0`
+
+### Creating Needed objects
+
+There is a bunch of object we need to create to make the work. There is a list and its dependencies of what we need
+
+- CronJob
+- ServiceAccount
+- ClusterRole and ClusterRoleBinding
+- Secret, ConfigMap
+
+#### Service Account, ClusterRole, ClusterRoleBinging
+
+```yaml
+---
+apiVersion: authorization.openshift.io/v1
+kind: ClusterRole
+metadata:
+  name: sync-ldap-users
+rules:
+- apiGroups: [ "user.openshift.io" ]
+  resources: [ "groups" ]
+  verbs: [ "get", "update" ]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sync-ldap-users
+
+---
+apiVersion: authorization.openshift.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sync-ldap-users
+roleRef:
+  name: sync-ldap-users
+subjects:
+- kind: ServiceAccount
+  name: sync-ldap-users
+```
+
+
+
 
 
