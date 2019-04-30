@@ -124,7 +124,7 @@ Executing the synchronization is done by this command `oc adm groups sync`. I do
 ### Prerequisites
 
 - for OpenShift v3.11 we need an access to the image `docker.io/ebits/openshift-client:v3.11.0`
-- create a project for this operation `oc new-project sync-ldap-users`
+- create a project for this task `oc new-project sync-ldap-users`
 
 ### Creating Needed objects
 
@@ -139,7 +139,7 @@ There is a bunch of objects we need to create to do the work:
 
 #### All resources in one file
 
-Save this content in file and do `oc create -f <file>`.
+Save this content in file and do `oc create -f all.yaml`.
 
 ```yaml
 ---
@@ -182,15 +182,15 @@ metadata:
 type: Opaque
 data:
   credentials: |
-    ZXhwb3J0IExEQVBfSE9TVD1sZGFwczovL2lkbS5kZW1vLmxpOS5jb20KZXhwb3J0IExEQVBfQklOREROPSJ1aWQ9b3BlbnNoaWZ0X2JpbmQsY249dXNlcnMsY249YWNjb3VudHMsZGM9ZGVtbyxkYz1saTksZGM9Y29tIgpleHBvcnQgTERBUF9CSU5ERE5fUEFTUz0iczU3cHBHdytEWndjZjJSUHJLdz0iCg==
-#     export LDAP_HOST=ldaps://idm.demo.li9.com
-#     export LDAP_BINDDN="uid=openshift_bind,cn=users,cn=accounts,dc=demo,dc=li9,dc=com"
+    ZXhwb3J0IExEQVBfSE9TVD1sZGFwczovL2lkbS5leGFtcGxlLmNvbQpleHBvcnQgTERBUF9CSU5ERE49InVpZD1vcGVuc2hpZnRfYmluZCxjbj11c2Vycyxjbj1hY2NvdW50cyxkYz1pZG0sZGM9ZXhhbXBsZSxkYz1jb20iCmV4cG9ydCBMREFQX0JJTkRETl9QQVNTPSJzNTdwcEd3K0Rad2NmMlJQckt3PSIK
+#     export LDAP_HOST=ldaps://idm.example.com
+#     export LDAP_BINDDN="uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com"
 #     export LDAP_BINDDN_PASS="s57ppGw+DZwcf2RPrKw="
 stringData:
   filtering: |
-    export LDAP_GROUPS_BASEDN="cn=groups,cn=accounts,dc=demo,dc=li9,dc=com"
+    export LDAP_GROUPS_BASEDN="cn=groups,cn=accounts,dc=idm,dc=example,dc=com"
     export LDAP_GROUPS_FILTER="(&(objectClass=posixGroup)(|(cn=openshift_admins)(cn=openshift_users)))"
-    export LDAP_USERS_BASEDN="cn=users,cn=accounts,dc=demo,dc=li9,dc=com"
+    export LDAP_USERS_BASEDN="cn=users,cn=accounts,dc=idm,dc=example,dc=com"
 
 
 ---
@@ -203,26 +203,7 @@ metadata:
 data:
     freeipa-ca.crt: |
       -----BEGIN CERTIFICATE-----
-      MIIDjjCCAnagAwIBAgIBATANBgkqhkiG9w0BAQsFADA3MRUwEwYDVQQKDAxERU1P
-      LkxJOS5DT00xHjAcBgNVBAMMFUNlcnRpZmljYXRlIEF1dGhvcml0eTAeFw0xOTAx
-      MTkwMTI0MDVaFw0zOTAxMTkwMTI0MDVaMDcxFTATBgNVBAoMDERFTU8uTEk5LkNP
-      TTEeMBwGA1UEAwwVQ2VydGlmaWNhdGUgQXV0aG9yaXR5MIIBIjANBgkqhkiG9w0B
-      AQEFAAOCAQ8AMIIBCgKCAQEA704KobWljBA50B6udKEkCNosLaz2dLsFlQHCKYD3
-      N7b6oBCp1ClOEmU1YO5cBVRAq7fuRjxdRUpiTLKHsaH01jp/DSv2YapmfYSTbD4c
-      LHa7cgVowHHY2ywv/HwebDaaiv2Fc4MeegWXSN/2Ewag8bHGWB0MHIqGU9UwZ8Xx
-      U6zY8Ii7FYOM2P41AhwTr8hX7Bu29dOUIwf7h64DPuV3Uo2R/LMhGyFb3WFkwjnV
-      bH5CI2KVPdKYJuTHa5tHAwtexF+sLyHBmIhx48FRMAVod7odBnuZ88NJPweO3Q1O
-      Vec17VVhhB/JiQ4O4YlqSlVYjDfpYQ1enZfjT+wS0OMZIwIDAQABo4GkMIGhMB8G
-      A1UdIwQYMBaAFLUSvxyD79hgpLg6Brx/+2cKD+XwMA8GA1UdEwEB/wQFMAMBAf8w
-      DgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBS1Er8cg+/YYKS4Oga8f/tnCg/l8DA+
-      BggrBgEFBQcBAQQyMDAwLgYIKwYBBQUHMAGGImh0dHA6Ly9pcGEtY2EuZGVtby5s
-      aTkuY29tL2NhL29jc3AwDQYJKoZIhvcNAQELBQADggEBAK4hJYXVyy5fs5AdZfA7
-      lTmhRqGJ0Ve44WVkdwZDzjMhiXSVXw868aGKW4VEGoCSWrekS5ld0x18S1zFLGql
-      00z2h4NPlEnXDhN8q9ZHUB+1s5jMjxL90Hvszmvqu4bTu2P30YOMulC74JRRaEfg
-      huTjY9d6pnTYtaInoxNitlj6QUBzHxP0CKMSDE0NbLfgbamwtkOxyhFl4BIZGLEu
-      JyQ8kemfiTow8FYT6lGVMyALHMRPxCsc7MisgkMK7bpK3HgfiSnu8LILGmaSkcz/
-      INfDgmtVLmUzgOYlc+/JtyqFUDgRXRUNb1LYQD6mXKmHJl1dNmSXIMSsFP6nqe+u
-      FDM=
+      < put here your FreeIPA-CA certificate >
       -----END CERTIFICATE-----
     sync-ldap-users.sh: |
       #!/bin/sh
@@ -326,13 +307,11 @@ cronjob.batch/sync-ldap-users created
 
 Run watch to check the cron
 ```
-$ oc get cronjob -w
+$ oc get cronjobs -w
 NAME              SCHEDULE      SUSPEND   ACTIVE    LAST SCHEDULE   AGE
-sync-ldap-users   */1 * * * *   False     1         12s             11m
-sync-ldap-users   */1 * * * *   False     0         16s       11m
-sync-ldap-users   */1 * * * *   False     1         7s        12m
-sync-ldap-users   */1 * * * *   False     0         17s       12m
-sync-ldap-users   */1 * * * *   False     1         7s        13m
+sync-ldap-users   */5 * * * *   False     0         <none>          1m
+sync-ldap-users   */5 * * * *   False     1         9s        4m
+sync-ldap-users   */5 * * * *   False     0         19s       4m
 ```
 
 In the meantime time add and delete users in FreeIPA to groups `openshift_users` and `openshift_admins` and watch the updates `oc get groups -w`.
