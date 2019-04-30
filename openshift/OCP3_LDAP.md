@@ -124,7 +124,7 @@ Executing the synchronization is done by this command `oc adm groups sync`. I do
 ### Prerequisites
 
 - for OpenShift v3.11 we need an access to the image `docker.io/ebits/openshift-client:v3.11.0`
-- create a project for this operation `oc new-project openshift-services` (`oc create ns openshift-service` should work)
+- create a project for this operation `oc new-project sync-ldap-users`
 
 ### Creating Needed objects
 
@@ -308,6 +308,18 @@ spec:
               readOnly: true
             - name: scripts
               mountPath: /config/scripts
+```
+
+```
+$ oc create -f 1.yaml
+```
+```
+clusterrole.authorization.openshift.io/sync-ldap-users created
+serviceaccount/sync-ldap-users created
+clusterrolebinding.authorization.openshift.io/sync-ldap-users created
+secret/sync-ldap-users created
+configmap/sync-ldap-users created
+cronjob.batch/sync-ldap-users created
 ```
 
 ### Verification
