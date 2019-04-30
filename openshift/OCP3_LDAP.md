@@ -164,7 +164,86 @@ subjects:
   name: sync-ldap-users
 ```
 
+#### Secret, ConfigMap
 
+```yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sync-ldap-users
+  labels:
+    app: sync-ldap-users
+type: Opaque
+data:
+  credentials: |
+    ZXhwb3J0IExEQVBfSE9TVD1sZGFwczovL2lkbS5leGFtcGxlLmNvbQpleHBvcnQgTERBUF9CSU5ERE49InVpZD1vcGVuc2hpZnRfYmluZCxjbj11c2Vycyxjbj1hY2NvdW50cyxkYz1pZG0sZGM9ZXhhbXBsZSxkYz1jb20iCmV4cG9ydCBMREFQX0JJTkRETl9QQVNTPSJzNTdwcEd3K0Rad2NmMlJQckt3PSIK
+#     export LDAP_HOST=ldaps://idm.example.com
+#     export LDAP_BINDDN="uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com"
+#     export LDAP_BINDDN_PASS="s57ppGw+DZwcf2RPrKw="
+stringData:
+  filtering: |
+    export LDAP_GROUPS_BASEDN="cn=groups,cn=accounts,dc=demo,dc=li9,dc=com"
+    export LDAP_GROUPS_FILTER="(&(objectClass=posixGroup)(|(cn=openshift_admins)(cn=openshift_users)))"
+    export LDAP_USERS_BASEDN="cn=users,cn=accounts,dc=demo,dc=li9,dc=com"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sync-ldap-users
+  labels:
+    app: sync-ldap-users
+data:
+    freeipa-ca.crt: |
+      -----BEGIN CERTIFICATE-----
+      <there should go your FreeIPA-CA certificate>
+      -----END CERTIFICATE-----
+    sync-ldap-users.sh: |
+      #!/bin/sh
+
+      YAML_CONFIG=/tmp/sync-ldap-users.yaml
+      . /config/envvars/credentials
+      . /config/envvars/filtering
+
+      cat << YAML > ${YAML_CONFIG}
+      kind: LDAPSyncConfig
+      apiVersion: v1
+      url: '${LDAP_HOST}'
+      bindDN: '${LDAP_BINDDN}'
+      bindPassword: '${LDAP_BINDDN_PASS}'
+      insecure: false
+      ca: /config/scripts/freeipa-ca.crt
+
+      rfc2307:
+        groupsQuery:
+          baseDN: '${LDAP_GROUPS_BASEDN}'
+          scope: sub
+          derefAliases: never
+          timeout: 0
+          filter: '${LDAP_GROUPS_FILTER}'
+          pageSize: 0
+        groupUIDAttribute: dn
+        groupNameAttributes: [ cn ]
+        userNameAttributes: [ uid ]
+        groupMembershipAttributes: [ member ]
+        usersQuery:
+          baseDN: '${LDAP_USERS_BASEDN}'
+          scope: sub
+          derefAliases: never
+          pageSize: 0
+        userUIDAttribute: dn
+        userNameAttribute: [ mail ]
+        tolerateMemberNotFoundErrors: false
+        tolerrateMemberOutOfScopeErrors: false
+      YAML
+
+      # Doing the synchronization
+      oc login https://kubernetes.default.svc \
+        --certificate-authority /run/secrets/kubernetes.io/serviceaccount/ca.crt  \
+        --token $(cat /run/secrets/kubernetes.io/serviceaccount/token)
+      oc adm groups sync --sync-config=${YAML_CONFIG} --confirm
+```
 
 
 
