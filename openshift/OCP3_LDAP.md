@@ -139,7 +139,7 @@ There is a bunch of objects we need to create to do the work:
 
 #### All resources in one file
 
-Save this content in file and do `oc create -f all.yaml`.
+Save this content in file and do `oc create -f all-in-one.yaml`.
 
 ```yaml
 ---
@@ -292,7 +292,7 @@ spec:
 ```
 
 ```
-$ oc create -f 1.yaml
+$ oc create -f all-in-one.yaml
 ```
 ```
 clusterrole.authorization.openshift.io/sync-ldap-users created
