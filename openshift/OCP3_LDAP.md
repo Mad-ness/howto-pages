@@ -36,9 +36,9 @@ oauthConfig:
         preferredUsername: [ 'uid' ]
       insecure: false
       ca: /etc/origin/master/freeipa-ca.crt
-      bindDN: 'uid=openshift_bind,cn=users,cn=accounts,dc=example,dc=com'
+      bindDN: 'uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com'
       bindPassword: '***********'
-      url: 'ldaps://idm.example.com/cn=users,cn=accounts,dc=example,dc=com?uid'
+      url: 'ldaps://idm.example.com/cn=users,cn=accounts,dc=idm,dc=example,dc=com?uid'
 ### end
 ...
 ```
@@ -55,14 +55,14 @@ $ cat sync-ldap.yaml
 kind: LDAPSyncConfig
 apiVersion: v1
 url: 'ldaps://idm.example.com'
-bindDN: 'uid=openshift_bind,cn=users,cn=accounts,dc=example,dc=com'
-bindPassword: '***********'
+bindDN: 'uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com'
+bindPassword: 'VerySecureObfuscatedPasswordQwerty'
 insecure: false
 ca: freeipa-ca.crt
 
 rfc2307:
   groupsQuery:
-    baseDN: 'cn=groups,cn=accounts,dc=example,dc=com'
+    baseDN: 'cn=groups,cn=accounts,dc=idm,dc=example,dc=com'
     scope: sub
     derefAliases: never
     timeout: 0
@@ -73,7 +73,7 @@ rfc2307:
   userNameAttributes: [ uid ]
   groupMembershipAttributes: [ member ]
   usersQuery:
-    baseDN: "cn=users,cn=accounts,dc=example,dc=com"
+    baseDN: "cn=users,cn=accounts,dc=idm,dc=example,dc=com"
     scope: sub
     derefAliases: never
     pageSize: 0
@@ -182,10 +182,10 @@ metadata:
 type: Opaque
 data:
   credentials: |
-    ZXhwb3J0IExEQVBfSE9TVD1sZGFwczovL2lkbS5leGFtcGxlLmNvbQpleHBvcnQgTERBUF9CSU5ERE49InVpZD1vcGVuc2hpZnRfYmluZCxjbj11c2Vycyxjbj1hY2NvdW50cyxkYz1pZG0sZGM9ZXhhbXBsZSxkYz1jb20iCmV4cG9ydCBMREFQX0JJTkRETl9QQVNTPSJzNTdwcEd3K0Rad2NmMlJQckt3PSIK
+    ZXhwb3J0IExEQVBfSE9TVD1sZGFwczovL2lkbS5leGFtcGxlLmNvbQpleHBvcnQgTERBUF9CSU5ERE49InVpZD1vcGVuc2hpZnRfYmluZCxjbj11c2Vycyxjbj1hY2NvdW50cyxkYz1pZG0sZGM9ZXhhbXBsZSxkYz1jb20iCmV4cG9ydCBMREFQX0JJTkRETl9QQVNTPSJWZXJ5U2VjdXJlT2JmdXNjYXRlZFBhc3N3b3JkUXdlcnR5Igo=
 #     export LDAP_HOST=ldaps://idm.example.com
 #     export LDAP_BINDDN="uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com"
-#     export LDAP_BINDDN_PASS="s57ppGw+DZwcf2RPrKw="
+#     export LDAP_BINDDN_PASS="VerySecureObfuscatedPasswordQwerty"
 stringData:
   filtering: |
     export LDAP_GROUPS_BASEDN="cn=groups,cn=accounts,dc=idm,dc=example,dc=com"
