@@ -117,7 +117,7 @@ $ oc adm policy add-cluster-role-to-group basic-user openshift_users
 If you will run  `oc adm groups sync` manually or use any external tools, you may not read further.
 
 
-## Making synchronization is done by OpenShift itself
+## Making synchronization done by OpenShift itself
 
 Executing the synchronization is done by this command `oc adm groups sync`. I don't know whether it possible to call the same action with API (sure possible). But I found another way how to do it. I will use `CronJob` object and an image with OpenShift client tool. It will call `oc adm groups sync` command by cron.
 
