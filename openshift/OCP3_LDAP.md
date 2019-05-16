@@ -176,7 +176,7 @@ rules:
   verbs: [ "get", "update" ]
 - apiGroups: [ "batch" ]
   resources: [ "cronjobs" ]
-  verbs: [ "update" ]
+  verbs: [ "get", "patch" ]
 
 ---
 apiVersion: v1
@@ -274,7 +274,8 @@ data:
       oc login https://kubernetes.default.svc \
         --certificate-authority /run/secrets/kubernetes.io/serviceaccount/ca.crt  \
         --token $(cat /run/secrets/kubernetes.io/serviceaccount/token)
-      oc adm groups sync --sync-config=${YAML_CONFIG} --confirm
+      oc adm groups sync --sync-config=${YAML_CONFIG} --confirm && \
+      oc patch cronjob sync-ldap-users -p '{ "metadata": {"annotations": {"last-sync": "'`date +%s`'", "last-sync-readable": "'`date`'"}}}'
 
 
 ---
