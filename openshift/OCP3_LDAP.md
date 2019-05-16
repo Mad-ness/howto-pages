@@ -174,7 +174,9 @@ rules:
 - apiGroups: [ "user.openshift.io" ]
   resources: [ "groups" ]
   verbs: [ "get", "update" ]
-
+- apiGroups: [ "batch" ]
+  resources: [ "cronjobs" ]
+  verbs: [ "update" ]
 
 ---
 apiVersion: v1
