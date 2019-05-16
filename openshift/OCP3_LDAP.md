@@ -128,7 +128,7 @@ openshift_users    ocp_testuser1, ocp_testuser2
 ```
 Also check the output of `oc get users` and `oc get identities`.
 
-## Give permissions
+## Giving permissions
 
 Assign the needed roles to the groups
 
@@ -208,7 +208,11 @@ metadata:
 type: Opaque
 data:
   credentials: |
-    ZXhwb3J0IExEQVBfSE9TVD1sZGFwczovL2lkbS5leGFtcGxlLmNvbQpleHBvcnQgTERBUF9CSU5ERE49InVpZD1vcGVuc2hpZnRfYmluZCxjbj11c2Vycyxjbj1hY2NvdW50cyxkYz1pZG0sZGM9ZXhhbXBsZSxkYz1jb20iCmV4cG9ydCBMREFQX0JJTkRETl9QQVNTPSJWZXJ5U2VjdXJlT2JmdXNjYXRlZFBhc3N3b3JkUXdlcnR5Igo=
+    ZXhwb3J0IExEQVBfSE9TVD1sZGFwczovL2lkbS5leGFtcGxlLmNvbQpleHBv
+    cnQgTERBUF9CSU5ERE49InVpZD1vcGVuc2hpZnRfYmluZCxjbj11c2Vycyxj
+    bj1hY2NvdW50cyxkYz1pZG0sZGM9ZXhhbXBsZSxkYz1jb20iCmV4cG9ydCBM
+    REFQX0JJTkRETl9QQVNTPSJWZXJ5U2VjdXJlT2JmdXNjYXRlZFBhc3N3b3Jk
+    UXdlcnR5Cg==
 #     export LDAP_HOST=ldaps://idm.example.com
 #     export LDAP_BINDDN="uid=openshift_bind,cn=users,cn=accounts,dc=idm,dc=example,dc=com"
 #     export LDAP_BINDDN_PASS="VerySecureObfuscatedPasswordQwerty"
