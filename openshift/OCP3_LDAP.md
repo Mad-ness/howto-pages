@@ -273,48 +273,47 @@ data:
         tolerateMemberNotFoundErrors: false
         tolerrateMemberOutOfScopeErrors: false
       YAML
+      
+      # Doing the synchronization
+      echo -n 'Start sync '; date
+      oc login https://kubernetes.default.svc \
+        --certificate-authority /run/secrets/kubernetes.io/serviceaccount/ca.crt  \
+        --token $(cat /run/secrets/kubernetes.io/serviceaccount/token)
+      oc adm groups sync --sync-config=${YAML_CONFIG} --confirm
 
-    # Doing the synchronization
-    echo -n 'Start sync '; date
-    oc login https://kubernetes.default.svc \
-      --certificate-authority /run/secrets/kubernetes.io/serviceaccount/ca.crt  \
-      --token $(cat /run/secrets/kubernetes.io/serviceaccount/token)
-    oc adm groups sync --sync-config=${YAML_CONFIG} --confirm
+      rc_sync=$?
+      lastrun_timestamp=`date +%s`
+      if [ $rc_sync -eq 0 ]; then
+        echo "Synced successfully"
+        lastsync_timestamp=$lastrun_timestamp
+      else
+        echo "Syncing failed"
+        # we need to read the value from the cronjob otherwise it's being overwritten
+        lastsync_timestamp=$(oc get --export cj sync-ldap-users -o=go-template='
+        {{- range $key, $value := .metadata.annotations -}}
+            {{- if eq $key "last-sync" -}}
+            {{- $value -}}
+            {{- end -}}
+        {{- end -}}')
+      fi
 
-    rc_sync=$?
-    lastrun_timestamp=`date +%s`
-    if [ $rc_sync -eq 0 ]; then
-      echo "Synced successfully"
-      lastsync_timestamp=$lastrun_timestamp
-    else
-      echo "Syncing failed"
-      # we need to read the value from the cronjob otherwise it's being overwritten
-      lastsync_timestamp=$(oc get --export cj sync-ldap-users -o=go-template='
-      {{- range $key, $value := .metadata.annotations -}}
-          {{- if eq $key "last-sync" -}}
-          {{- $value -}}
-          {{- end -}}
-      {{- end -}}')
-    fi
-
-    #
-    # Update annotations of the cronjob with the time of syncing
-    #
-    read -rs -d '' PATCH <<- EOF
-    {
-      "metadata": {
-        "annotations": {
-          "last-run": "$lastrun_timestamp",
-          "last-run-readable": "`date --date=@$lastrun_timestamp`",
-          "last-sync": "$lastsync_timestamp",
-          "last-sync-readable": "`date --date=@$lastsync_timestamp`"
+      #
+      # Update annotations of the cronjob with the time of syncing
+      #
+      read -rs -d '' PATCH <<- EOF
+      {
+        "metadata": {
+          "annotations": {
+            "last-run": "$lastrun_timestamp",
+            "last-run-readable": "`date --date=@$lastrun_timestamp`",
+            "last-sync": "$lastsync_timestamp",
+            "last-sync-readable": "`date --date=@$lastsync_timestamp`"
+          }
         }
       }
-    }
-    EOF
-    oc patch cronjob sync-ldap-users -p "$PATCH" && echo "Annotations updated"
-    echo -n 'End sync '; date
-
+      EOF
+      oc patch cronjob sync-ldap-users -p "$PATCH" && echo "Annotations updated"
+      echo -n 'End sync '; date
 
 ---
 apiVersion: batch/v1beta1
