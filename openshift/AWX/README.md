@@ -55,6 +55,6 @@ Create the needed instances in the mentioned order and make sure everything is r
 
 ## Authors
 
-* Dmitrii Mostovshchikov <Dmitrii.Mostovshchikov@Li9.com>
+* Dmitrii Mostovshchikov <dmadm2008@gmail.com>
 
 
