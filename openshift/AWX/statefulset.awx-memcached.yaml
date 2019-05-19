@@ -1,0 +1,43 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "memcached"
+spec:
+  selector:
+    app: "awx-memcached"
+  ports:
+    - name: data
+      port: 11211
+      targetPort: 11211
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "awx-memcached"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "awx-memcached"
+  serviceName: "awx-memcached"
+  template:
+    metadata:
+      name: "awx-memcached"
+      labels:
+        app: "awx-memcached"
+    spec:
+      containers:
+        - name: "awx-memcached"
+          image: "memcached:latest"
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          ports:
+            - containerPort: 11211
+              protocol: TCP
+              name: data
+

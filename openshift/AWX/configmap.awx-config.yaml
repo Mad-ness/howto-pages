@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "awx-config"
+data:
+  awx_config.sh: |
+    #!/bin/bash
+
+    my_id=${HOSTNAME##*-}
+
+    # Make sure that this script runs only on
+    # first pod named as ...-0
+    if [ x"$my_id" != x"0" ]; then
+      exit 0
+    fi
+
+
+    # Wait until a database becomes available
+    echo "Checking that a database is ready to serve..."
+    cat << CHECK | awx-manage shell
+    from django.db import connections
+    from django.db.utils import OperationalError
+    from time import sleep
+    db_conn = connections['default']
+    connected = False
+    while not connected:
+      try:
+        c = db_conn.cursor()
+      except OperationalError:
+        print("Next check for a database availability in 10 seconds...")
+        sleep(10)
+      else:
+        connected = True 
+        print("Database is ready, continue...")
+    CHECK
+
+
+    echo "Starting initialization..."
+    awx-manage migrate --noinput
+    echo "Migration done."
+    cat << EOF | awx-manage shell
+    from django.contrib.auth.models import User
+    nsu = User.objects.filter(is_superuser=True).count()
+    exit(0 if nsu > 0 else 1)
+    EOF
+    echo "Admin users checked."
+    if [ $? -eq 1 ]; then
+
+      . /etc/tower/conf.d/environment.sh
+
+      echo "Admin user in shell: $AWX_ADMIN_USER"
+      echo "Admin's password in shell: $AWX_ADMIN_PASSWORD"
+
+      cat << EOF | awx-manage shell
+    import os
+    from django.contrib.auth.models import User
+    print("Configured username as {0} with password {1}".format(
+        os.environ.get('AWX_ADMIN_USER'), os.environ.get('AWX_ADMIN_PASSWORD')
+    )
+    User.objects.create_superuser(
+        os.environ.get('AWX_ADMIN_USER'),
+        'admin@example.org',
+        os.environ.get('AWX_ADMIN_PASSWORD')
+    )
+    EOF
+      echo "Admin user created."
+
+      awx-manage update_password --username="${AWX_ADMIN_USER}" --password="${AWX_ADMIN_PASSWORD}"
+      echo "Admin password is set."
+      awx-manage create_preload_data
+      echo "Preloaded data populated."
+    fi
+    echo "Initialization done."
+
+  awx_settings: |
+    import os
+    import socket
+    ADMINS = ()
+
+    AWX_PROOT_ENABLED = True
+
+    # Automatically deprovision pods that go offline
+    AWX_AUTO_DEPROVISION_INSTANCES = True
+
+    SYSTEM_TASK_ABS_CPU = 2
+    SYSTEM_TASK_ABS_MEM = 20
+
+    INSIGHTS_URL_BASE = "https://example.org"
+
+    #Autoprovisioning should replace this
+    # CLUSTER_HOST_ID = socket.gethostname()
+    CLUSTER_HOST_ID = "awx-task-0"
+    SYSTEM_UUID = '00000000-0000-0000-0000-000000000000'
+
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+
+    REMOTE_HOST_HEADERS = ['HTTP_X_FORWARDED_FOR']
+
+    STATIC_ROOT = '/var/lib/awx/public/static'
+    PROJECTS_ROOT = '/var/lib/awx/projects'
+    JOBOUTPUT_ROOT = '/var/lib/awx/job_status'
+    SECRET_KEY = open('/etc/tower/SECRET_KEY', 'rb').read().strip()
+    ALLOWED_HOSTS = ['*']
+    INTERNAL_API_URL = 'http://127.0.0.1:8052'
+    SERVER_EMAIL = 'root@localhost'
+    DEFAULT_FROM_EMAIL = 'webmaster@localhost'
+    EMAIL_SUBJECT_PREFIX = '[AWX] '
+    EMAIL_HOST = 'localhost'
+    EMAIL_PORT = 25
+    EMAIL_HOST_USER = ''
+    EMAIL_HOST_PASSWORD = ''
+    EMAIL_USE_TLS = False
+
+    LOGGING['handlers']['console'] = {
+        '()': 'logging.StreamHandler',
+        'level': 'DEBUG',
+        'formatter': 'simple',
+    }
+
+    LOGGING['loggers']['django.request']['handlers'] = ['console']
+    LOGGING['loggers']['rest_framework.request']['handlers'] = ['console']
+    LOGGING['loggers']['awx']['handlers'] = ['console']
+    LOGGING['loggers']['awx.main.commands.run_callback_receiver']['handlers'] = ['console']
+    LOGGING['loggers']['awx.main.commands.inventory_import']['handlers'] = ['console']
+    LOGGING['loggers']['awx.main.tasks']['handlers'] = ['console']
+    LOGGING['loggers']['awx.main.scheduler']['handlers'] = ['console']
+    LOGGING['loggers']['django_auth_ldap']['handlers'] = ['console']
+    LOGGING['loggers']['social']['handlers'] = ['console']
+    LOGGING['loggers']['system_tracking_migrations']['handlers'] = ['console']
+    LOGGING['loggers']['rbac_migrations']['handlers'] = ['console']
+    LOGGING['loggers']['awx.isolated.manager.playbooks']['handlers'] = ['console']
+    LOGGING['handlers']['callback_receiver'] = {'class': 'logging.NullHandler'}
+    LOGGING['handlers']['task_system'] = {'class': 'logging.NullHandler'}
+    LOGGING['handlers']['tower_warnings'] = {'class': 'logging.NullHandler'}
+    LOGGING['handlers']['rbac_migrations'] = {'class': 'logging.NullHandler'}
+    LOGGING['handlers']['system_tracking_migrations'] = {'class': 'logging.NullHandler'}
+    LOGGING['handlers']['management_playbooks'] = {'class': 'logging.NullHandler'}
+
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+            'LOCATION': '{}:{}'.format("memcached", "11211")
+        },
+        'ephemeral': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+    }
+
+    USE_X_FORWARDED_PORT = True

@@ -1,0 +1,137 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: awx
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "awx-task"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "awx-task"
+  serviceName: "awx-task"
+  template:
+    metadata:
+      name: "awx-task"
+      labels:
+        app: "awx-task"
+    spec:
+      serviceAccount: awx
+      serviceAccountName: awx
+      initContainers:
+        - name: mgmt-pod
+          image: "ansible/awx_task:4.0.0"
+          command: [ "/bin/bash", "/scripts/awx_init.sh" ]
+          env:
+            - name: POSTGRESQL_HOST
+              value: "postgresql"
+            - name: DATABASE_HOST
+              value: "postgresql"
+            - name: RABBITMQ_HOST
+              value: "awx-rabbitmq"
+          volumeMounts:
+          - name: awx-application-config
+            mountPath: "/etc/tower/settings.py"
+            subPath: settings.py
+            readOnly: true
+          - name: awx-tower-init
+            mountPath: "/scripts"
+            readOnly: true
+          - name: awx-application-credentials
+            mountPath: "/etc/tower/conf.d/"
+            readOnly: true
+          - name: awx-secret-key
+            mountPath: "/etc/tower/SECRET_KEY"
+            subPath: SECRET_KEY
+            readOnly: true
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu: 900m
+      containers:
+        - name: awx-task
+          image: "ansible/awx_task:4.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8052
+              protocol: TCP
+          securityContext:
+            privileged: true
+          env:
+            - name: AWX_SKIP_MIGRATIONS
+              value: "1"
+            - name: DATABASE_HOST
+              value: "postgresql"
+            - name: POSTGRESQL_HOST 
+              value: "postgresql"
+            - name: RABBITMQ_HOST
+              value: "rabbitmq"
+            - name: MEMCACHED_HOST
+              value: "memcached"
+          command: [ "/usr/bin/launch_awx_task.sh" ]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+          volumeMounts:
+            - name: awx-application-config
+              mountPath: /etc/tower/settings.py
+              subPath: settings.py
+              readOnly: true
+            - name: awx-application-credentials
+              mountPath: /etc/tower/conf.d/
+              readOnly: true
+            - name: awx-secret-key
+              mountPath: /etc/tower/SECRET_KEY
+              subPath: SECRET_KEY
+              readOnly: true
+      volumes:
+        - name: awx-application-config
+          configMap:
+            name: "awx-config"
+            defaultMode: 420
+            items:
+              - key: awx_settings
+                path: settings.py
+        - name: awx-application-credentials
+          secret:
+            secretName: "awx-secrets"
+            defaultMode: 420
+            items:
+              - key: credentials_py
+                path: credentials.py
+              - key: environment_sh
+                path: environment.sh
+        - name: awx-secret-key
+          secret:
+            secretName: "awx-secrets"
+            defaultMode: 420
+            items:
+              - key: secret_key
+                path: SECRET_KEY
+        - name: awx-tower-init
+          configMap:
+            name: "awx-config"
+            defaultMode: 511
+            items:
+              - key: awx_config.sh
+                path: awx_init.sh
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "awx-task"
+spec:
+  selector:
+    app: "awx-task"
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8052
+      protocol: TCP
+

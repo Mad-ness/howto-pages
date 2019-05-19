@@ -1,0 +1,730 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: awx-tower
+  annotations:
+    tags: "ansible,tower,awx,cicd,playbook"
+    description: > 
+      Free version of Red Hat Ansible Tower. This setup does not use a persistent storage.
+      Therefore if and when a postgresql pod is restarted all data is being lost, a pod awx-task must be re-run as well.
+      It supports the deployment of only a single AWX application per project. Login:admin, password:password.
+    openshift.io/display-name: "AWX Tower (ephemeral)"
+    maintainer-name: "Dmitrii Mostovshchikov"
+    maintainer-email: "Dmitrii.Mostovshchikov@Li9.com"
+    maintainer-company: "Li9"
+message: "Application AWX is going to be ready shortly. Make sure you did 'oc adm policy add-scc-to-user privileged -z awx -n <namespace>'"
+objects:
+
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: "${APP_NAME}-rabbitmq-config"
+      labels:
+        appname: "${APP_NAME}"
+    data:
+      # [rabbitmq_management,rabbitmq_peer_discovery_k8s].
+      enabled_plugins: |
+        [rabbitmq_management].
+      rabbitmq.conf: |
+        ## Clustering
+        management.load_definitions = /etc/rabbitmq/rabbitmq_definitions.json
+        #cluster_formation.peer_discovery_backend  = rabbit_peer_discovery_k8s
+        #cluster_formation.k8s.host = kubernetes.default.svc
+        ## cluster_formation.k8s.port = 8443
+        #cluster_formation.k8s.address_type = ip
+        #cluster_formation.node_cleanup.interval = 10
+        #cluster_formation.node_cleanup.only_log_warning = false
+        #cluster_partition_handling = autoheal
+        ## queue master locator
+        queue_master_locator=min-masters
+        ## enable guest user
+        loopback_users.guest = false
+      rabbitmq_definitions.json: |
+        {
+          "users":[{"name": "awx", "password": "awxpass", "tags": ""}],
+          "permissions":[
+            {"user":"awx","vhost":"awx","configure":".*","write":".*","read":".*"}
+          ],
+          "vhosts":[{"name":"awx"}],
+          "policies":[
+              {"vhost":"awx","name":"ha-all","pattern":".*","definition":{"ha-mode":"all","ha-sync-mode":"automatic"}}
+          ]
+        }
+
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: "${APP_NAME}-awx-config"
+      labels:
+        appname: "${APP_NAME}"
+    data:
+      awx_config.sh: |
+        #!/bin/bash
+    
+        my_id=${HOSTNAME##*-}
+    
+        # Make sure that this script runs only on
+        # first pod named as ...-0
+        if [ x"$my_id" != x"0" ]; then
+          exit 0
+        fi
+
+
+        # Wait until a database becomes available
+        echo "Checking that a database is ready to serve..."
+        cat << CHECK | awx-manage shell
+        from django.db import connections
+        from django.db.utils import OperationalError
+        from time import sleep
+        db_conn = connections['default']
+        connected = False
+        while not connected:
+          try:
+            c = db_conn.cursor()
+          except OperationalError:
+            print("Next check for a database availability in 10 seconds...")
+            sleep(10)
+          else:
+            connected = True 
+            print("Database is ready, continue...")
+        CHECK
+
+    
+        echo "Starting initialization..."
+        awx-manage migrate --noinput
+        echo "Migration done."
+        cat << EOF | awx-manage shell
+        from django.contrib.auth.models import User
+        nsu = User.objects.filter(is_superuser=True).count()
+        exit(0 if nsu > 0 else 1)
+        EOF
+        echo "Admin users checked."
+        if [ $? -eq 1 ]; then
+    
+          . /etc/tower/conf.d/environment.sh
+    
+          echo "Admin user in shell: $AWX_ADMIN_USER"
+          echo "Admin's password in shell: $AWX_ADMIN_PASSWORD"
+    
+          cat << EOF | awx-manage shell
+        import os
+        from django.contrib.auth.models import User
+        print("Configured username as {0} with password {1}".format(
+            os.environ.get('AWX_ADMIN_USER'), os.environ.get('AWX_ADMIN_PASSWORD')
+        )
+        User.objects.create_superuser(
+            os.environ.get('AWX_ADMIN_USER'),
+            'admin@example.org',
+            os.environ.get('AWX_ADMIN_PASSWORD')
+        )
+        EOF
+          echo "Admin user created."
+    
+          awx-manage update_password --username="${AWX_ADMIN_USER}" --password="${AWX_ADMIN_PASSWORD}"
+          echo "Admin password is set."
+          awx-manage create_preload_data
+          echo "Preloaded data populated."
+        fi
+        echo "Initialization done."
+    
+      awx_settings: |
+        import os
+        import socket
+        ADMINS = ()
+    
+        AWX_PROOT_ENABLED = True
+    
+        # Automatically deprovision pods that go offline
+        AWX_AUTO_DEPROVISION_INSTANCES = True
+    
+        SYSTEM_TASK_ABS_CPU = 2
+        SYSTEM_TASK_ABS_MEM = 20
+    
+        INSIGHTS_URL_BASE = "https://example.org"
+    
+        #Autoprovisioning should replace this
+        # CLUSTER_HOST_ID = socket.gethostname()
+        CLUSTER_HOST_ID = "${APP_NAME}-awx-task-0"
+        SYSTEM_UUID = '00000000-0000-0000-0000-000000000000'
+    
+        SESSION_COOKIE_SECURE = False
+        CSRF_COOKIE_SECURE = False
+    
+        REMOTE_HOST_HEADERS = ['HTTP_X_FORWARDED_FOR']
+    
+        STATIC_ROOT = '/var/lib/awx/public/static'
+        PROJECTS_ROOT = '/var/lib/awx/projects'
+        JOBOUTPUT_ROOT = '/var/lib/awx/job_status'
+        SECRET_KEY = open('/etc/tower/SECRET_KEY', 'rb').read().strip()
+        ALLOWED_HOSTS = ['*']
+        INTERNAL_API_URL = 'http://127.0.0.1:8052'
+        SERVER_EMAIL = 'root@localhost'
+        DEFAULT_FROM_EMAIL = 'webmaster@localhost'
+        EMAIL_SUBJECT_PREFIX = '[AWX] '
+        EMAIL_HOST = 'localhost'
+        EMAIL_PORT = 25
+        EMAIL_HOST_USER = ''
+        EMAIL_HOST_PASSWORD = ''
+        EMAIL_USE_TLS = False
+    
+        LOGGING['handlers']['console'] = {
+            '()': 'logging.StreamHandler',
+            'level': 'DEBUG',
+            'formatter': 'simple',
+        }
+    
+        LOGGING['loggers']['django.request']['handlers'] = ['console']
+        LOGGING['loggers']['rest_framework.request']['handlers'] = ['console']
+        LOGGING['loggers']['awx']['handlers'] = ['console']
+        LOGGING['loggers']['awx.main.commands.run_callback_receiver']['handlers'] = ['console']
+        LOGGING['loggers']['awx.main.commands.inventory_import']['handlers'] = ['console']
+        LOGGING['loggers']['awx.main.tasks']['handlers'] = ['console']
+        LOGGING['loggers']['awx.main.scheduler']['handlers'] = ['console']
+        LOGGING['loggers']['django_auth_ldap']['handlers'] = ['console']
+        LOGGING['loggers']['social']['handlers'] = ['console']
+        LOGGING['loggers']['system_tracking_migrations']['handlers'] = ['console']
+        LOGGING['loggers']['rbac_migrations']['handlers'] = ['console']
+        LOGGING['loggers']['awx.isolated.manager.playbooks']['handlers'] = ['console']
+        LOGGING['handlers']['callback_receiver'] = {'class': 'logging.NullHandler'}
+        LOGGING['handlers']['task_system'] = {'class': 'logging.NullHandler'}
+        LOGGING['handlers']['tower_warnings'] = {'class': 'logging.NullHandler'}
+        LOGGING['handlers']['rbac_migrations'] = {'class': 'logging.NullHandler'}
+        LOGGING['handlers']['system_tracking_migrations'] = {'class': 'logging.NullHandler'}
+        LOGGING['handlers']['management_playbooks'] = {'class': 'logging.NullHandler'}
+    
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+                'LOCATION': '{}:{}'.format("${APP_NAME}-memcached", "11211")
+            },
+            'ephemeral': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            },
+        }
+    
+        USE_X_FORWARDED_PORT = True
+
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: "${APP_NAME}-awx-secrets"
+      labels:
+        appname: "${APP_NAME}"
+    type: Opaque
+    data:
+      admin_password: cGFzc3dvcmQ=
+      credentials_py: |
+        aW1wb3J0IG9zCgpEQVRBQkFTRVMgPSB7CiAgICAnZGVmYXVsdCc6IHsKICAg
+        ICAgICAnQVRPTUlDX1JFUVVFU1RTJzogVHJ1ZSwKICAgICAgICAnRU5HSU5F
+        JzogJ2F3eC5tYWluLmRiLnByb2ZpbGVkX3BnJywKICAgICAgICAnTkFNRSc6
+        ICJhd3giLAogICAgICAgICdVU0VSJzogImF3eCIsCiAgICAgICAgJ1BBU1NX
+        T1JEJzogImF3eHBhc3MiLAogICAgICAgICdIT1NUJzogb3MuZW52aXJvbi5n
+        ZXQoIlBPU1RHUkVTUUxfSE9TVCIpLAogICAgICAgICdQT1JUJzogIjU0MzIi
+        LAogICAgfQp9CkJST0tFUl9VUkwgPSAnYW1xcDovL3t9Ont9QHt9Ont9L3t9
+        Jy5mb3JtYXQoCiAgICAiYXd4IiwKICAgICJhd3hwYXNzIiwKICAgIG9zLmVu
+        dmlyb24uZ2V0KCJSQUJCSVRNUV9IT1NUIiksCiAgICAiNTY3MiIsCiAgICAi
+        YXd4IikKQ0hBTk5FTF9MQVlFUlMgPSB7CiAgICAnZGVmYXVsdCc6IHsnQkFD
+        S0VORCc6ICdhc2dpX2FtcXAuQU1RUENoYW5uZWxMYXllcicsCiAgICAgICAg
+        ICAgICAgICAnUk9VVElORyc6ICdhd3gubWFpbi5yb3V0aW5nLmNoYW5uZWxf
+        cm91dGluZycsCiAgICAgICAgICAgICAgICAnQ09ORklHJzogeyd1cmwnOiBC
+        Uk9LRVJfVVJMfX0KfQo=
+
+      environment_sh: |
+        REFUQUJBU0VfVVNFUj1hd3gKREFUQUJBU0VfTkFNRT1hd3gKREFUQUJBU0Vf
+        UE9SVD01NDMyCkRBVEFCQVNFX1BBU1NXT1JEPWF3eHBhc3MKQVdYX0FETUlO
+        X1VTRVI9YWRtaW4KQVdYX0FETUlOX1BBU1NXT1JEPXBhc3N3b3JkCg==
+
+      pg_password: YXd4cGFzcw==
+      rabbitmq_erlang_cookie: Y29va2llbW9uc3Rlcg==
+      rabbitmq_password: YXd4cGFzcw==
+      secret_key: YXd4c2VjcmV0
+
+
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      name: "${APP_NAME}-postgresql"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      replicas: "1"
+      selector:
+        app: "${APP_NAME}-postgresql"
+      strategy: 
+        type: "Rolling"
+      template:
+        metadata:
+          name: "${APP_NAME}-postgresql"
+          labels:
+            app: "${APP_NAME}-postgresql"
+            appname: "${APP_NAME}"
+          annotations: 
+            template.alpha.openshift.io/wait-for-ready: "true"
+            template.openshift.io/expose-uri: 'postgres://{.spec.clusterIP}:{.spec.ports[?(.name=="postgresql")].port}'
+        spec:
+          volumes:
+            - name: data
+              emptyDir: {}
+          containers:
+            - image: "docker.io/centos/postgresql-96-centos7"
+              name: "postgresql"
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 512Mi
+              env:
+                - name: POSTGRESQL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: "${APP_NAME}-awx-secrets"
+                      key: "pg_password"
+                - name: POSTGRESQL_DATABASE
+                  value: "awx"
+                - name: POSTGRESQL_USER
+                  value: "awx"
+              ports:
+                - containerPort: 5432
+                  protocol: TCP
+                  name: postgresql
+              volumeMounts:
+                - name: data
+                  mountPath: /var/lib/pgsql/data
+                  readOnly: false
+    
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: "${APP_NAME}-postgresql"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      selector:
+        app: "${APP_NAME}-postgresql"
+      ports:
+        - name: postgresql
+          port: 5432
+          containerPort: 5432
+          protocol: TCP
+
+### Memcached (Service and StatefulSet)
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: "${APP_NAME}-memcached"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      selector:
+        app: "${APP_NAME}-awx-memcached"
+      ports:
+        - name: data
+          port: 11211
+          targetPort: 11211
+          protocol: TCP
+
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: "${APP_NAME}-awx-memcached"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: "${APP_NAME}-awx-memcached"
+      serviceName: "${APP_NAME}-awx-memcached"
+      template:
+        metadata:
+          name: "${APP_NAME}-awx-memcached"
+          labels:
+            app: "${APP_NAME}-awx-memcached"
+            appname: "${APP_NAME}"
+        spec:
+          containers:
+            - name: "${APP_NAME}-awx-memcached"
+              image: "memcached:latest"
+              imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+              ports:
+                - containerPort: 11211
+                  protocol: TCP
+                  name: data
+
+### RabbitMQ (Service and StatefulSet)
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: "${APP_NAME}-awx-rabbitmq"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: "${APP_NAME}-awx-rabbitmq"
+      serviceName: "${APP_NAME}-awx-rabbitmq"
+      template:
+        metadata:
+          name: "${APP_NAME}-awx-rabbitmq"
+          labels:
+            app: "${APP_NAME}-awx-rabbitmq"
+            appname: "${APP_NAME}"
+          annotations:
+            template.alpha.openshift.io/wait-for-ready: "true"
+        spec:
+          containers:
+            - name: awx-rabbitmq
+              image: "ansible/awx_rabbitmq:3.7.4"
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                exec:
+                  command:
+                    - rabbitmqctl
+                    - status
+                failureThreshold: 3
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 10
+              readinessProbe:
+                exec:
+                  command:
+                    - rabbitmqctl
+                    - status
+                failureThreshold: 3
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 10
+              ports:
+                - containerPort: 15672
+                  protocol: TCP
+                  name: http
+                - containerPort: 5762
+                  protocol: TCP
+                  name: amqp
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+              env:
+                - name: MY_POD_IP
+                  valueFrom:
+                    fieldRef:
+                      apiversion: v1
+                      fieldPath: status.podIP
+                - name: RABBITMQ_USE_LONGNAME
+                  value: "true"
+                - name: RABBITMQ_NODENAME
+                  value: rabbit@$(MY_POD_IP)
+                - name: RABBITMQ_ERLANG_COOKIE
+                  valueFrom:
+                    secretKeyRef:
+                      name: "${APP_NAME}-awx-secrets"
+                      key: rabbitmq_erlang_cookie
+                - name: K8S_SERVICE_NAME
+                  value: rabbitmq
+              volumeMounts:
+                - name: rabbitmq-config
+                  mountPath: /etc/rabbitmq
+          volumes:
+            - name: rabbitmq-config
+              configMap:
+                name: "${APP_NAME}-rabbitmq-config"
+                defaultMode: 420
+                items:
+                  - key: rabbitmq.conf
+                    path: rabbitmq.conf
+                  - key: enabled_plugins
+                    path: enabled_plugins
+                  - key: rabbitmq_definitions.json
+                    path: rabbitmq_definitions.json
+    
+    
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: "${APP_NAME}-rabbitmq"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      selector:
+        app: "${APP_NAME}-awx-rabbitmq"
+      ports:
+        - name: http
+          port: 15672
+          targetPort: 15672
+          protocol: TCP
+        - name: amqp
+          port: 5672
+          targetPort: 5672
+          protocol: TCP
+
+### AWX-Task ServiceAccount, StatefulSet and Service
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: awx
+      labels:
+        appname: "${APP_NAME}"
+    
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: "${APP_NAME}-awx-task"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: "${APP_NAME}-awx-task"
+      serviceName: "${APP_NAME}-awx-task"
+      template:
+        metadata:
+          name: "${APP_NAME}-awx-task"
+          labels:
+            app: "${APP_NAME}-awx-task"
+            appname: "${APP_NAME}"
+        spec:
+          serviceAccount: awx
+          serviceAccountName: awx
+          initContainers:
+            - name: mgmt-pod
+              image: "ansible/awx_task:4.0.0"
+              command: [ "/bin/bash", "/scripts/awx_init.sh" ]
+              env:
+                - name: POSTGRESQL_HOST
+                  value: "${APP_NAME}-postgresql"
+                - name: DATABASE_HOST
+                  value: "${APP_NAME}-postgresql"
+                - name: RABBITMQ_HOST
+                  value: "${APP_NAME}-awx-rabbitmq"
+              volumeMounts:
+              - name: awx-application-config
+                mountPath: "/etc/tower/settings.py"
+                subPath: settings.py
+                readOnly: true
+              - name: awx-tower-init
+                mountPath: "/scripts"
+                readOnly: true
+              - name: awx-application-credentials
+                mountPath: "/etc/tower/conf.d/"
+                readOnly: true
+              - name: awx-secret-key
+                mountPath: "/etc/tower/SECRET_KEY"
+                subPath: SECRET_KEY
+                readOnly: true
+              resources:
+                limits:
+                  memory: 1024Mi
+                  cpu: 900m
+          containers:
+            - name: awx-task
+              image: "ansible/awx_task:4.0.0"
+              imagePullPolicy: IfNotPresent
+              ports:
+                - containerPort: 8052
+                  protocol: TCP
+              securityContext:
+                privileged: true
+              env:
+                - name: AWX_SKIP_MIGRATIONS
+                  value: "1"
+                - name: DATABASE_HOST
+                  value: "${APP_NAME}-postgresql"
+                - name: POSTGRESQL_HOST 
+                  value: "${APP_NAME}-postgresql"
+                - name: RABBITMQ_HOST
+                  value: "${APP_NAME}-rabbitmq"
+                - name: MEMCACHED_HOST
+                  value: "${APP_NAME}-memcached"
+              command: [ "/usr/bin/launch_awx_task.sh" ]
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              volumeMounts:
+                - name: awx-application-config
+                  mountPath: /etc/tower/settings.py
+                  subPath: settings.py
+                  readOnly: true
+                - name: awx-application-credentials
+                  mountPath: /etc/tower/conf.d/
+                  readOnly: true
+                - name: awx-secret-key
+                  mountPath: /etc/tower/SECRET_KEY
+                  subPath: SECRET_KEY
+                  readOnly: true
+          volumes:
+            - name: awx-application-config
+              configMap:
+                name: "${APP_NAME}-awx-config"
+                defaultMode: 420
+                items:
+                  - key: awx_settings
+                    path: settings.py
+            - name: awx-application-credentials
+              secret:
+                secretName: "${APP_NAME}-awx-secrets"
+                defaultMode: 420
+                items:
+                  - key: credentials_py
+                    path: credentials.py
+                  - key: environment_sh
+                    path: environment.sh
+            - name: awx-secret-key
+              secret:
+                secretName: "${APP_NAME}-awx-secrets"
+                defaultMode: 420
+                items:
+                  - key: secret_key
+                    path: SECRET_KEY
+            - name: awx-tower-init
+              configMap:
+                name: "${APP_NAME}-awx-config"
+                defaultMode: 511
+                items:
+                  - key: awx_config.sh
+                    path: awx_init.sh
+    
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: "${APP_NAME}-awx-task"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      selector:
+        app: "${APP_NAME}-awx-task"
+      ports:
+        - name: http
+          port: 80
+          targetPort: 8052
+          protocol: TCP
+
+### AWX-Web StatefulSet and Service
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: "${APP_NAME}-awx-web"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: "${APP_NAME}-awx-web"
+      serviceName: "${APP_NAME}-awx-web"
+      template:
+        metadata:
+          name: "${APP_NAME}-awx-web"
+          labels:
+            app: "${APP_NAME}-awx-web"
+            appname: "${APP_NAME}"
+        spec:
+          containers:
+            - name: awx-web
+              image: "ansible/awx_web:4.0.0"
+              imagePullPolicy: IfNotPresent
+              ports:
+                - containerPort: 8052
+                  protocol: TCP
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              env:
+                - name: DATABASE_HOST
+                  value: "${APP_NAME}-postgresql"
+                - name: POSTGRESQL_HOST
+                  value: "${APP_NAME}-postgresql"
+                - name: RABBITMQ_HOST
+                  value: "${APP_NAME}-rabbitmq"
+                - name: MEMCACHED_HOST
+                  value: "${APP_NAME}-memcached"
+              volumeMounts:
+                - name: awx-application-config
+                  mountPath: /etc/tower/settings.py
+                  readOnly: true
+                  subPath: settings.py
+                - name: awx-application-credentials
+                  mountPath: /etc/tower/conf.d/
+                  readOnly: true
+                - name: awx-secret-key
+                  mountPath: /etc/tower/SECRET_KEY
+                  readOnly: true
+                  subPath: SECRET_KEY
+    
+    
+          volumes:
+            - name: awx-application-config
+              configMap:
+                name: "${APP_NAME}-awx-config"
+                items:
+                  - key: awx_settings
+                    path: settings.py
+            - name: awx-secret-key
+              secret:
+                secretName: "${APP_NAME}-awx-secrets"
+                defaultMode: 420
+                items:
+                  - key: secret_key
+                    path: SECRET_KEY
+            - name: awx-environment
+              secret:
+                secretName: "${APP_NAME}-awx-secrets"
+                items:
+                  - key: environment_sh
+                    path: environment.sh
+            - name: awx-application-credentials
+              secret:
+                secretName: "${APP_NAME}-awx-secrets"
+                items:
+                  - key: credentials_py
+                    path: 'credentials.py'
+                  - key: environment_sh
+                    path: 'environment.sh'
+    
+    
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: "${APP_NAME}-awx-web"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      selector:
+        app: "${APP_NAME}-awx-web"
+      ports:
+        - name: http
+          port: 80
+          targetPort: 8052
+
+  - apiVersion: v1
+    kind: Route
+    metadata:
+      name: "${APP_NAME}-awx-web"
+      labels:
+        appname: "${APP_NAME}"
+    spec:
+      to:
+        kind: Service
+        name: "${APP_NAME}-awx-web"
+      tls:
+        termination: Edge
+
+parameters:
+  - name: APP_NAME
+    displayName: Name of your application instance
+    generate: expression
+    from: '[a-z]{5}'
+    required: true
+
+labels:
+  template: "awx-tower"
+

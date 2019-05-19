@@ -1,0 +1,104 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "awx-rabbitmq"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "awx-rabbitmq"
+  serviceName: "awx-rabbitmq"
+  template:
+    metadata:
+      name: "awx-rabbitmq"
+      labels:
+        app: "awx-rabbitmq"
+      annotations:
+        template.alpha.openshift.io/wait-for-ready: "true"
+    spec:
+      containers:
+        - name: awx-rabbitmq
+          image: "ansible/awx_rabbitmq:3.7.4"
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - rabbitmqctl
+                - status
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - rabbitmqctl
+                - status
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 15672
+              protocol: TCP
+              name: http
+            - containerPort: 5762
+              protocol: TCP
+              name: amqp
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  apiversion: v1
+                  fieldPath: status.podIP
+            - name: RABBITMQ_USE_LONGNAME
+              value: "true"
+            - name: RABBITMQ_NODENAME
+              value: rabbit@$(MY_POD_IP)
+            - name: RABBITMQ_ERLANG_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  name: "awx-secrets"
+                  key: rabbitmq_erlang_cookie
+            - name: K8S_SERVICE_NAME
+              value: rabbitmq
+          volumeMounts:
+            - name: rabbitmq-config
+              mountPath: /etc/rabbitmq
+      volumes:
+        - name: rabbitmq-config
+          configMap:
+            name: "rabbitmq-config"
+            defaultMode: 420
+            items:
+              - key: rabbitmq.conf
+                path: rabbitmq.conf
+              - key: enabled_plugins
+                path: enabled_plugins
+              - key: rabbitmq_definitions.json
+                path: rabbitmq_definitions.json
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "rabbitmq"
+spec:
+  selector:
+    app: "awx-rabbitmq"
+  ports:
+    - name: http
+      port: 15672
+      targetPort: 15672
+      protocol: TCP
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+      protocol: TCP

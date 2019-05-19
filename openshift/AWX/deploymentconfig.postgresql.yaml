@@ -1,0 +1,61 @@
+---
+apiVersion: v1
+kind: DeploymentConfig
+metadata:
+  name: "postgresql"
+spec:
+  replicas: "1"
+  selector:
+    app: "postgresql"
+  strategy: 
+    type: "Rolling"
+  template:
+    metadata:
+      name: "postgresql"
+      labels:
+        app: "postgresql"
+      annotations: 
+        template.alpha.openshift.io/wait-for-ready: "true"
+        template.openshift.io/expose-uri: 'postgres://{.spec.clusterIP}:{.spec.ports[?(.name=="postgresql")].port}'
+    spec:
+      volumes:
+        - name: data
+          emptyDir: {}
+      containers:
+        - image: "docker.io/centos/postgresql-96-centos7"
+          name: "postgresql"
+          resources:
+            limits:
+              cpu: 200m
+              memory: 512Mi
+          env:
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "$awx-secrets"
+                  key: "pg_password"
+            - name: POSTGRESQL_DATABASE
+              value: "awx"
+            - name: POSTGRESQL_USER
+              value: "awx"
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+              name: postgresql
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+              readOnly: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "postgresql"
+spec:
+  selector:
+    app: "postgresql"
+  ports:
+    - name: postgresql
+      port: 5432
+      containerPort: 5432
+      protocol: TCP
