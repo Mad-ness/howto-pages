@@ -1,17 +1,14 @@
 import os
 import ldap
-from django_auth_ldap.config import LDAPSearch, LDAPSearchUnion
-from django_auth_ldap.config import GroupOfNamesType, GroupOfUniqueNamesType, PosixGroupType
-from django_auth_ldap.config import LDAPGroupQuery
+from django_auth_ldap.config import LDAPSearch
+from django_auth_ldap.config import GroupOfNamesType
 
 ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
 
-# Provide these values in environment variables
-base_dn = os.environ.get("LDAP_BASE_DN")
+base_dn = os.environ.get("LDAP_BASE_DN").strip()
 bind_username = os.environ.get("LDAP_BIND_DN")
 bind_password = os.environ.get("LDAP_BIND_PASSWORD")
-ldap_host = os.environ.get("LDAP_URI")
-
+ldap_host = os.environ.get("LDAP_URI") # ldap://example.com[:389]
 
 AUTH_LDAP_BIND_DN = bind_username
 AUTH_LDAP_USER_DN_TEMPLATE = "uid=%(user)s,cn=users,{0}".format(base_dn)
@@ -27,6 +24,8 @@ AUTH_LDAP_USER_ATTR_MAP = { "first_name": "givenName", "last_name": "sn", "email
 AUTH_LDAP_SERVER_URI = ldap_host
 AUTH_LDAP_START_TLS = True
 
+AUTH_LDAP_GROUP_TYPE_PARAMS = {}
+
 AUTH_LDAP_USER_SEARCH = LDAPSearch(
   "cn=users,{0}".format(base_dn), # Base DN
   ldap.SCOPE_SUBTREE,
@@ -38,4 +37,38 @@ AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
   ldap.SCOPE_SUBTREE, # SCOPE_BASE, SCOPE_ONELEVEL, SCOPE_SUBTREE
   '(&(objectClass=groupOfNames)(|(cn=towerusers)(cn=toweradmins)(cn=towerauditors)))', # Query
 )
+
+
+#AUTH_LDAP_ORGANIZATION_MAP = {
+#  "Demo Company (LDAP)": {
+#    "admins": "cn=toweradmins,cn=groups,{0}".format(base_dn),
+#    "users": [
+#      "cn=towerusers,cn=groups,{0}".format(base_dn),
+#      "cn=towerusers_demo_admins,cn=groups,{0}".format(base_dn),
+#      "cn=towerusers_demo_operators,cn=groups,{0}".format(base_dn),
+#      "cn=towerusers_demo_users,cn=groups,{0}".format(base_dn)
+#    ],
+#    "remove_users": True,
+#    "remove_admins": True,
+#    "users": True
+#  }
+#}
+#
+#AUTH_LDAP_TEAM_MAP = {
+#  "Administrators": {
+#    "organization": "Demo Company (LDAP)",
+#    "users": "cn=towerusers_demo_admins,cn=groups,{0}".format(base_dn),
+#    "remove": True
+#  },
+#  "Engineering": {
+#    "organization": "Demo Company (LDAP)",
+#    "users": "cn=towerusers_demo_operators,cn=groups,{0}".format(base_dn),
+#    "remove": True
+#  },
+#  "Users": {
+#    "organization": "Demo Company (LDAP)",
+#    "users": "cn=towerusers_demo_users,cn=groups,{0}".format(base_dn),
+#    "remove": True
+#  }
+#}
 
