@@ -58,12 +58,12 @@ class NodeAPI(BaseAPI):
           if label.startswith("node-role.kubernetes.io/") and len(label) > len("node-role.kubernetes.io/"):
             group_name = label.split('/')[1] + 's'
 
-            if groups.get(group_name):
-              groups[group_name]['hosts'].append(labels.get('kubernetes.io/hostname'))
-            else:
-              groups[group_name] = { 
-                'hosts': [ labels.get('kubernetes.io/hostname'), ]
-              }
+          if groups.get(group_name):
+            groups[group_name]['hosts'].append(labels.get('kubernetes.io/hostname'))
+          else:
+            groups[group_name] = { 
+              'hosts': [ labels.get('kubernetes.io/hostname'), ]
+            }
     
     return groups, nodes
 
