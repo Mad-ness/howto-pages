@@ -52,6 +52,20 @@ Create the needed instances in the mentioned order and make sure everything is r
 * Limits cannot be adjusted without modifying the resources in the template
 * Versions of images are hardcoded in the template
 
+### Ldap Authentication
+
+This work has been checked on FreeIPA.
+
+Put the file `ldap.py` to `/etc/tower/conf.d/ldap.py` into  **AWX-Web** container to enable LDAP authentication. 
+
+This file also requires some environment variables to be provided:
+
+- *LDAP_BASE_DN* - base DN, ex. `cn=accounts,dc=example,dc=com`
+- *LDAP_BIND_DN* - bind DN, ex. `uid=tower_bind,cn=users,cn=accounts,dc=example,dc=com`
+- *LDAP_BIND_PASSWORD* - bind DN password
+- *LDAP_URI* - ldap host, ex. `ldap://example.com`
+
+
 
 ## Authors
 
