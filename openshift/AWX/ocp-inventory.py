@@ -52,7 +52,7 @@ class NodeAPI(BaseAPI):
         # Placing the hosts into groups
         # Groups names are taken from label "node-role.kubernetes.io/***"
         for label in labels:
-          group_name = 'ungroupped'
+          group_name = 'ungrouped'
           # Supposing that role names are "node-role.kubernetes.io/master", 
           # "node-role.kubernetes.io/compute", and "node-role.kubernetes.io/infra"
           if label.startswith("node-role.kubernetes.io/") and len(label) > len("node-role.kubernetes.io/"):
@@ -106,7 +106,16 @@ class OpenShiftInventory(object):
 
 #
 # It's better to create a service account and give to it permissions (roles) to
-# perform "get" operation on "nodes" and put here its token
+# perform "get" operation on "nodes" and put here its token.
 #
-OpenShiftInventory(endpoint="https://kubernetes.default.svc", token="your-token")
+# Put your values to endpoint and token. Currently these values are 
+# readed from environment variables but this is only for debug purposes.
+#
+# Note: If you install the script in AWX (Ansible Tower) deployed in OpenShift, these values
+# could be supplied as environment variables as well.
+#
+OpenShiftInventory(
+  endpoint=os.environ.get("OCP_ENDPOINT", "https://kubernetes.default.svc"), 
+  token=os.environ.get("OCP_TOKEN", None)
+)
 
