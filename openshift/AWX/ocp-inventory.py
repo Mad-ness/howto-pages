@@ -1,5 +1,40 @@
 #!/usr/bin/env python
 
+"""
+The script talks to OpenShift specified in OCP_ENDPOINT environment variable and gets a list of nodes to build an ansible inventory.
+It also needs OCP_TOKEN environment variable which should have a token of an account which has the permission - verb "list" for resource "nodes".
+
+To use the script an OpenShift account like this might be created, and its token used for authentication.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: awx-inventory
+  namespace: openshift-node
+
+---
+apiVersion: authorization.openshift.io/v1
+kind: ClusterRole
+metadata:
+  name: awx-get-inventory
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "nodes" ]
+    verbs: [ "list" ]
+
+---
+apiVersion: authorization.openshift.io/v1
+kind: RoleBinding
+metadata:
+  name: awx-get-inventory
+roleRef:
+  name: awx-get-inventory
+subjects:
+  - kind: ServiceAccount
+    name: awx-inventory
+    namespace: openshift-node
+"""
+
 import os
 import sys
 import argparse

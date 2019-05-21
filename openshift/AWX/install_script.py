@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+"""
+The script installs other a script as a custom script into AWX and creates an inventory in AWX based on the installed script.
+It needs when AWX is deployed in OpenShift, and you want to have an inventory with OpenShift nodes.
+In general, the installed script is https://raw.githubusercontent.com/Mad-ness/howto-pages/master/openshift/AWX/ocp-inventory.py.
+
+Pay attention on the used environment variables. They need to access OpenShift and AWX.
+"""
+
 import os
 import sys
 import argparse
