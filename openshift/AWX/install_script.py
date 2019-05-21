@@ -128,7 +128,7 @@ class AwxAPI(BaseAPI):
       "name={0}".format(inventory_name),
       {
         "name": inventory_name,
-        "description": "Includes nodes of the cluster where the AWX is run",
+        "description": "Includes nodes of the OpenShift cluster where the AWX is run",
         "organization": "1",
         "kind": ""
       },

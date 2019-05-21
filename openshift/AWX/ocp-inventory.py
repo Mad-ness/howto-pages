@@ -46,27 +46,25 @@ class NodeAPI(BaseAPI):
 
         nodes[labels.get('kubernetes.io/hostname')] = {
           'labels': labels,
-          'ansible_ssh_host': [ 
-            pair.get('address') for pair in (node_detail.get('status').get('addresses')) if pair.get('type') == 'InternalIP' 
-          ][0]
+          'ansible_ssh_host': [ pair.get('address') for pair in (node_detail.get('status').get('addresses')) if pair.get('type') == 'InternalIP' ][0]
         }
 
         # Placing the hosts into groups
         # Groups names are taken from label "node-role.kubernetes.io/***"
+        # Unassigned nodes will be automatically put into 'ungrouped' group by ansible
         for label in labels:
-          group_name = 'ungrouped'
           # Supposing that role names are "node-role.kubernetes.io/master", 
           # "node-role.kubernetes.io/compute", and "node-role.kubernetes.io/infra"
           if label.startswith("node-role.kubernetes.io/") and len(label) > len("node-role.kubernetes.io/"):
             group_name = label.split('/')[1] + 's'
 
-          if groups.get(group_name):
-            groups[group_name]['hosts'].append(labels.get('kubernetes.io/hostname'))
-          else:
-            groups[group_name] = { 
-              'hosts': [ labels.get('kubernetes.io/hostname'), ]
-            }
-    
+            if groups.get(group_name):
+              groups[group_name]['hosts'].append(labels.get('kubernetes.io/hostname'))
+            else:
+              groups[group_name] = { 
+                'hosts': [ labels.get('kubernetes.io/hostname'), ]
+              }
+           
     return groups, nodes
 
 class OpenShiftInventory(object):
@@ -91,8 +89,7 @@ class OpenShiftInventory(object):
   def empty_inventory(self): return { '_meta': { 'hostvars': {}}}
     
   def get_inventory(self):
-    api = NodeAPI(endpoint=self.endpoint, token=self.token)
-    groups, hosts = api.getNodes()
+    groups, hosts = NodeAPI(endpoint=self.endpoint, token=self.token).getNodes()
     inv = groups
     inv['_meta'] = {
       'hostvars': hosts
