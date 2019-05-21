@@ -5,7 +5,13 @@ The script installs other a script as a custom script into AWX and creates an in
 It needs when AWX is deployed in OpenShift, and you want to have an inventory with OpenShift nodes.
 In general, the installed script is https://raw.githubusercontent.com/Mad-ness/howto-pages/master/openshift/AWX/ocp-inventory.py.
 
-Pay attention on the used environment variables. They need to access OpenShift and AWX.
+Pay attention on the used environment variables. They need to access AWX.
+
+The script creates or gets, if already exists, a few records in AWX to create an inventory in AWX. 
+But the script does not have any information how to access to the hosts in the built inventory. Therefore
+credentials should be created manually to start using the inventory.
+
+The script might be run multiple times.
 """
 
 import os
@@ -13,10 +19,13 @@ import sys
 import argparse
 import requests
 from requests.auth import HTTPBasicAuth
-from urllib3 import disable_warnings
 
 
-disable_warnings()
+try:
+  from urllib3 import disable_warnings
+  disable_warnings()
+except:
+  pass
 
 try:
   import json
@@ -97,14 +106,14 @@ class AwxAPI(BaseAPI):
     if source.startswith("./"): source = source[2:]
     if source.split(":", 1)[0] in [ "http", "https", "ftp", "ftps" ]:
       payload = self.downloadFile(source)
-      description = "From local file {0}".format(source)
+      description = "Downloaded from {0}".format(source)
     elif os.path.isfile(source):
       try:
         payload = open(source, 'r').read()
       except IOError:
         print("Cannot read the source from a local file {0}".format(source))
         exit(1)
-      description = "Downloaded from {0}".format(source)
+      description = "From local file {0}".format(source)
     else:
       raise Exception("Don't known how to obtain the source {0}".format(source))
 
