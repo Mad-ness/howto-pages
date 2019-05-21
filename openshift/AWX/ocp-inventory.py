@@ -4,10 +4,12 @@ import os
 import sys
 import argparse
 import requests
-from urllib3 import disable_warnings
 
-
-disable_warnings()
+try:
+  from urllib3 import disable_warnings
+  disable_warnings()
+except:
+  pass
 
 try:
   import json
