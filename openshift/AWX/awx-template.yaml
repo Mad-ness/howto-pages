@@ -91,16 +91,17 @@ objects:
 
     
         echo "Starting initialization..."
-        awx-manage migrate --noinput
-        echo "Migration done."
         cat << EOF | awx-manage shell
         from django.contrib.auth.models import User
         nsu = User.objects.filter(is_superuser=True).count()
-        exit(0 if nsu > 0 else 1)
+        exit(nsu if nsu < 9 else 9 )
         EOF
+        rc=$?
         echo "Admin users checked."
-        if [ $? -eq 1 ]; then
+        if [ $rc -eq 0 ]; then
     
+          awx-manage migrate --noinput
+          echo "Migration done."
           . /etc/tower/conf.d/environment.sh
     
           echo "Admin user in shell: $AWX_ADMIN_USER"
